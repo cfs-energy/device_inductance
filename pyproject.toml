@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "device_inductance"
-version = "1.7.3"
+version = "1.7.4"
 description = "Tokamak core inductance matrices and flux tables"
 authors = ["Commonwealth Fusion Systems <jlogan@cfs.energy>"]
 license = "MIT OR Apache-2.0"

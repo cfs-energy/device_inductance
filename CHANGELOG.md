@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.4 - 2024-10-09
+
+### Changed
+
+* Update readthedocs config
+
 ## 1.7.3 - 2024-10-08
 
 ### Changed
