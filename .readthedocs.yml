@@ -16,7 +16,7 @@ build:
       - asdf global poetry latest
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install
 
 mkdocs:
   configuration: mkdocs.yml
