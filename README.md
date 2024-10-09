@@ -1,6 +1,6 @@
 # Device Inductance
 
-[Docs](https://device_inductance.readthedocs.io/)
+[Docs](https://device-inductance.readthedocs.io/)
 
 Tokamak core inductance matrices and flux tables, such as the one below:
 
