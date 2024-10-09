@@ -14,7 +14,6 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Physics",
     "License :: OSI Approved :: MIT License",
-    "License :: OSI Approved :: Apache-2.0 License",
 ]
 
 [tool.poetry.dependencies]
