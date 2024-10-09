@@ -9,9 +9,14 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-  # jobs:
-    # pre_build:  # Generate plots for docs
-    #   - MPLBACKEND="Agg" sh build_docs.sh
+  jobs:
+    pre_create_environment:
+      - asdf plugin add poetry
+      - asdf install poetry latest
+      - asdf global poetry latest
+      - poetry config virtualenvs.create false
+    post_install:
+      - poetry install
 
 mkdocs:
   configuration: mkdocs.yml
