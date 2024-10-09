@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - release
+  workflow_dispatch:
+
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.12']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Setup
+      run: |
+        curl -sSL https://install.python-poetry.org | python - --version 1.8.3
+        export PATH="/home/runner/.local/bin:$PATH"
+
+        sudo apt update
+        sudo apt install -y gmsh
+        poetry install
+
+    - name: Release
+      run: |
+        export PATH="/home/runner/.local/bin:$PATH"
+        pip install twine==5.1.1
+        poetry build && twine upload -u "__token__" -p ${{ secrets.PYPI_TOKEN }} ./dist/*

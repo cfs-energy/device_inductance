@@ -1,0 +1,45 @@
+name: test
+
+on: 
+  push:
+    branches:
+      - release
+      - main
+  pull_request: []
+  workflow_dispatch:
+    tag: "Manual Run"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Setup
+      run: |
+        curl -sSL https://install.python-poetry.org | python - --version 1.8.3
+        export PATH="/home/runner/.local/bin:$PATH"
+
+        sudo apt update
+        sudo apt install -y gmsh
+        poetry install
+
+    - name: Run checks
+      run: |
+        export PATH="/home/runner/.local/bin:$PATH"
+        
+        poetry run ruff check .
+        poetry run pyright ./device_inductance
+        MPLBACKEND="AGG" poetry run coverage run --source=./device_inductance -m pytest ./test --verbose
+        
+        # Coverage fail-under limit is configured in pyproject.toml
+        poetry run coverage report
