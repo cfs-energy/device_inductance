@@ -13,7 +13,7 @@ build:
     pre_create_environment:
       - python -m pip install poetry
     post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH python -m poetry install
 
 mkdocs:
   configuration: mkdocs.yml
