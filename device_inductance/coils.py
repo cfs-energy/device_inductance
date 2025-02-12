@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
+from numpy.typing import NDArray
 from omas import ODS
 
 from cfsem import (
@@ -28,6 +30,8 @@ class CoilFilament:
 
 @dataclass(frozen=True)
 class Coil:
+    """An axisymmetric magnet, which may not have a rectangular cross-section"""
+
     name: str
     """This name should match the name used in the device description ODS"""
 
@@ -40,6 +44,57 @@ class Coil:
     filaments: list[CoilFilament]
     """Discretized circular filaments describing the coil's winding pattern"""
 
+    def grids(self) -> Optional[tuple[NDArray, NDArray]]:
+        """Generate a set of regular r,z grids that span the coil winding pack centers exactly
+        if possible, or None if the winding pack can't be represented exactly.
+
+        Adds 4 grid cells of padding around the winding pack to deconflict the
+        cells with nonzero current density from the boundary conditions of a
+        flux solve.
+        """
+
+        # Get coordinates with a unit cell
+        unique_r = np.array(sorted(list(set([f.r for f in self.filaments]))))  # [m]
+        unique_z = np.array(sorted(list(set([f.z for f in self.filaments]))))
+
+        # Make sure there are enough unit cells to work with
+        if len(unique_r) == 0 or len(unique_z) == 0:
+            return None
+
+        # Check if the coordinates have regular spacing
+        drs = np.diff(unique_r)
+        dr_mean = np.mean(drs)
+        if np.any(np.abs(drs - dr_mean) / dr_mean > 1e-4):
+            return None
+        dzs = np.diff(unique_z)
+        dz_mean = np.mean(dzs)
+        if np.any(np.abs(dzs - dz_mean) / dz_mean > 1e-4):
+            return None
+        
+        # Extend grids by a few cells outside the winding pack
+        npad = 4
+        nr = len(unique_r) + 2 * npad
+        nz = len(unique_z) + 2 * npad
+        r_pad = 4 * dr_mean
+        z_pad = 4 * dz_mean
+        rgrid = np.linspace(unique_r[0] - r_pad, unique_r[-1] + r_pad, nr)
+        zgrid = np.linspace(unique_z[0] - z_pad, unique_z[-1] + z_pad, nz)
+
+        return (rgrid, zgrid)
+    
+    def meshes(self) -> Optional[tuple[NDArray, NDArray]]:
+        """Generate a set of regular r,z meshes that span the coil winding pack centers exactly
+        if possible, or None if the winding pack can't be represented exactly.
+
+        Adds 4 grid cells of padding around the winding pack to deconflict the
+        cells with nonzero current density from the boundary conditions of a
+        flux solve.
+        """
+        grids = self.grids()
+        if grids is not None:
+            return np.meshgrid(*grids, indexing="ij")
+        else:
+            return None
 
 def _extract_coils(description: ODS) -> list[Coil]:
     """
