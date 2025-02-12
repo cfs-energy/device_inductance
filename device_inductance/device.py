@@ -508,7 +508,7 @@ class DeviceInductance:
         to get `psi` in [Wb] or [V-s], where `rhs = -2.0 * np.pi * mu_0 * rmesh * jtor` with the boundary
         values set to the circular-filament solved flux.
         """
-        return flux_solver(self.grids, self.meshes)
+        return flux_solver(self.grids)
 
     def get_coil_names(self) -> list[str]:
         """Get coil names in the same order as their indices"""
