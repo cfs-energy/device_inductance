@@ -16,6 +16,7 @@ from cfsem import (
 
 from .utils import solve_flux_axisymmetric, calc_flux_density_from_flux
 
+from interpn import MulticubicRectilinear
 
 @dataclass(frozen=True)
 class CoilFilament:
@@ -73,20 +74,20 @@ class Coil:
 
         # Check if the coordinates have regular spacing
         drs = np.diff(unique_r)
-        dr_mean = np.mean(drs)
-        if np.any(np.abs(drs - dr_mean) / dr_mean > 1e-4):
+        drmean = np.mean(drs)
+        if np.any(np.abs(drs - drmean) / drmean > 1e-4):
             return None
         dzs = np.diff(unique_z)
-        dz_mean = np.mean(dzs)
-        if np.any(np.abs(dzs - dz_mean) / dz_mean > 1e-4):
+        dzmean = np.mean(dzs)
+        if np.any(np.abs(dzs - dzmean) / dzmean > 1e-4):
             return None
 
         # Extend grids by a few cells outside the winding pack
-        npad = 4
+        npad = 8
         nr = len(unique_r) + 2 * npad
         nz = len(unique_z) + 2 * npad
-        r_pad = 4 * dr_mean
-        z_pad = 4 * dz_mean
+        r_pad = npad * drmean
+        z_pad = npad * dzmean
         rgrid = np.linspace(unique_r[0] - r_pad, unique_r[-1] + r_pad, nr)
         zgrid = np.linspace(unique_z[0] - z_pad, unique_z[-1] + z_pad, nz)
 
@@ -101,14 +102,14 @@ class Coil:
         cells with nonzero current density from the boundary conditions of a
         flux solve.
         """
-        grids = self.grids()
+        grids = self.grids
         if grids is not None:
             return np.meshgrid(*grids, indexing="ij")
         else:
             return None
 
     @cached_property
-    def local_flux_table(self) -> Optional[tuple[NDArray, NDArray, NDArray]]:
+    def local_fields(self) -> Optional[tuple[NDArray, NDArray, NDArray]]:
         """
         Solve the local self-field flux and flux density per amp by mapping the
         coil section to a continuous current density distribution and solving the
@@ -118,19 +119,25 @@ class Coil:
         Returns:
             (psi, br, bz) [Wb/A, T/A, T/A] 2D arrays of poloidal flux and flux density per amp of coil current
         """
-        grids = self.grids()
-        meshes = self.meshes()
+        grids = self.grids
+        meshes = self.meshes
         if grids is not None and meshes is not None:
             rgrid, zgrid = grids
             rmesh, zmesh = meshes
+            dr = rgrid[1] - rgrid[0]  # [m]
+            dz = zgrid[1] - zgrid[0]  # [m]
+            area = dr * dz  # [m^2]
 
             # Map current density per amp
             jtor = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
             for f in self.filaments:
                 # Get indices of location of this filament
-                ri = rgrid[np.argmin(np.abs(rgrid - f.r))]
-                zi = rgrid[np.argmin(np.abs(zgrid - f.z))]
-                jtor[ri, zi] = f.n
+                ri = np.argmin(np.abs(rgrid - f.r))
+                zi = np.argmin(np.abs(zgrid - f.z))
+                # Set current density for that unit cell
+                # so that the total for the cell comes out to the
+                # correct total current
+                jtor[ri, zi] += f.n / area
 
             # Solve flux field
             psi = solve_flux_axisymmetric(grids, meshes, jtor)
@@ -140,6 +147,22 @@ class Coil:
 
             return psi, br, bz
 
+        else:
+            return None
+        
+    @cached_property
+    def local_field_interpolators(self) -> Optional[tuple[MulticubicRectilinear, MulticubicRectilinear, MulticubicRectilinear]]:
+        """Build interpolators over the solved local fields, if available"""
+        grids = self.grids
+        local_fields = self.local_fields
+
+        if grids is not None and local_fields is not None:
+            psi, br, bz = local_fields
+            psi_interp = MulticubicRectilinear.new(grids, psi)
+            br_interp = MulticubicRectilinear.new(grids, br)
+            bz_interp = MulticubicRectilinear.new(grids, bz)
+
+            return psi_interp, br_interp, bz_interp
         else:
             return None
 

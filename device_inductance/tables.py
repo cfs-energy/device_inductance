@@ -33,7 +33,7 @@ def _calc_coil_flux_tables(
     shape = meshes[0].shape
     nr, nz = meshes[0].shape
 
-    # Calculate
+    # Calculate tables using filament calcs
     coil_table_shape = (ncoil, nr, nz)  # This ordering makes each table contiguous
     psi_mesh_coils = np.zeros(coil_table_shape)  # [Wb/A]
     items = [x for x in enumerate(coils)]
@@ -49,6 +49,28 @@ def _calc_coil_flux_tables(
         ).reshape(
             shape
         )  # [Wb/A]
+
+        # For coils with their winding pack on a regular grid, patch over the field near the coil
+        # with a local axisymmetric flux solve
+        cgrids = c.grids
+        cmeshes = c.meshes
+        cinterp = c.local_field_interpolators
+        if cgrids is not None and cmeshes is not None and cinterp is not None:
+            # Figure out which points to replace with the local field
+            cpsi, _, _ = cinterp
+            crgrid, czgrid = cgrids
+            rmin, rmax, zmin, zmax = crgrid[0], crgrid[-1], czgrid[0], czgrid[-1]
+            mask = np.ones_like(rmesh)
+            mask *= np.where(rmesh >= rmin, True, False)
+            mask *= np.where(rmesh <= rmax, True, False)
+            mask *= np.where(zmesh >= zmin, True, False)
+            mask *= np.where(zmesh <= zmax, True, False)
+            inds = np.where(mask > 0.0)
+
+            # Replace points with local field solve
+            robs = rmesh[inds].flatten()
+            zobs = zmesh[inds].flatten()
+            psi_mesh_coils[i, :, :][inds] = cpsi.eval([robs, zobs])
 
     return np.ascontiguousarray(psi_mesh_coils)  # [Wb/A]
 

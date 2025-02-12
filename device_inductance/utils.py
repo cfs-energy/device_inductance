@@ -211,7 +211,7 @@ def solve_flux_axisymmetric(
     grids: tuple[NDArray, NDArray],
     meshes: tuple[NDArray, NDArray],
     current_density: NDArray,
-    solver: Optional[Callable[[NDArray], NDArray]],
+    solver: Optional[Callable[[NDArray], NDArray]] = None,
 ) -> NDArray:
     """
     Calculate the flux field associated with a given toroidal current density distribution,
@@ -263,12 +263,14 @@ def solve_flux_axisymmetric(
     return psi
 
 
-def _check_regular(grids: tuple[NDArray, NDArray]) -> tuple[float, float]:
+def _check_regular(grids: tuple[NDArray, NDArray], tol=1e-6) -> tuple[float, float]:
     """Check that grids are regular and returns spacing"""
     rgrid, zgrid = grids
     drs = np.diff(rgrid)
     dzs = np.diff(zgrid)
-    assert np.all(drs == drs[0]), "Grids must be regular"
-    assert np.all(dzs == dzs[0]), "Grids must be regular"
+    drmean = np.mean(drs)
+    dzmean = np.mean(dzs)
+    assert np.all(np.abs(drs - drmean) / drmean < 1e-4), "Grids must be regular"
+    assert np.all(np.abs(dzs - dzmean) / dzmean < 1e-4), "Grids must be regular"
 
-    return drs[0], dzs[0]  # [m]
+    return drmean, dzmean  # [m]
