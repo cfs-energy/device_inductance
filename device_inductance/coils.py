@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from functools import cached_property
+
 import numpy as np
 from numpy.typing import NDArray
 from omas import ODS
@@ -12,9 +14,16 @@ from cfsem import (
     self_inductance_circular_ring_wien,
 )
 
+from .utils import solve_flux_axisymmetric, calc_flux_density_from_flux
+
 
 @dataclass(frozen=True)
 class CoilFilament:
+    """
+    A discretized element of an axisymmetric magnet.
+    Self-inductance is calculated based on conductor geoemtry.
+    """
+
     r: float
     """[m] radial location"""
 
@@ -44,6 +53,7 @@ class Coil:
     filaments: list[CoilFilament]
     """Discretized circular filaments describing the coil's winding pattern"""
 
+    @cached_property
     def grids(self) -> Optional[tuple[NDArray, NDArray]]:
         """Generate a set of regular r,z grids that span the coil winding pack centers exactly
         if possible, or None if the winding pack can't be represented exactly.
@@ -70,7 +80,7 @@ class Coil:
         dz_mean = np.mean(dzs)
         if np.any(np.abs(dzs - dz_mean) / dz_mean > 1e-4):
             return None
-        
+
         # Extend grids by a few cells outside the winding pack
         npad = 4
         nr = len(unique_r) + 2 * npad
@@ -81,7 +91,8 @@ class Coil:
         zgrid = np.linspace(unique_z[0] - z_pad, unique_z[-1] + z_pad, nz)
 
         return (rgrid, zgrid)
-    
+
+    @cached_property
     def meshes(self) -> Optional[tuple[NDArray, NDArray]]:
         """Generate a set of regular r,z meshes that span the coil winding pack centers exactly
         if possible, or None if the winding pack can't be represented exactly.
@@ -95,6 +106,43 @@ class Coil:
             return np.meshgrid(*grids, indexing="ij")
         else:
             return None
+
+    @cached_property
+    def local_flux_table(self) -> Optional[tuple[NDArray, NDArray, NDArray]]:
+        """
+        Solve the local self-field flux and flux density per amp by mapping the
+        coil section to a continuous current density distribution and solving the
+        continuous flux field via 4th-order finite difference, then extracting the
+        B-field from the flux field via 4th-order finite difference.
+
+        Returns:
+            (psi, br, bz) [Wb/A, T/A, T/A] 2D arrays of poloidal flux and flux density per amp of coil current
+        """
+        grids = self.grids()
+        meshes = self.meshes()
+        if grids is not None and meshes is not None:
+            rgrid, zgrid = grids
+            rmesh, zmesh = meshes
+
+            # Map current density per amp
+            jtor = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
+            for f in self.filaments:
+                # Get indices of location of this filament
+                ri = rgrid[np.argmin(np.abs(rgrid - f.r))]
+                zi = rgrid[np.argmin(np.abs(zgrid - f.z))]
+                jtor[ri, zi] = f.n
+
+            # Solve flux field
+            psi = solve_flux_axisymmetric(grids, meshes, jtor)
+
+            # Extract flux density
+            br, bz = calc_flux_density_from_flux(psi, rmesh, zmesh)
+
+            return psi, br, bz
+
+        else:
+            return None
+
 
 def _extract_coils(description: ODS) -> list[Coil]:
     """
