@@ -18,6 +18,7 @@ from .utils import solve_flux_axisymmetric, calc_flux_density_from_flux
 
 from interpn import MulticubicRectilinear
 
+
 @dataclass(frozen=True)
 class CoilFilament:
     """
@@ -83,13 +84,25 @@ class Coil:
             return None
 
         # Extend grids by a few cells outside the winding pack
-        npad = 8
+        # 7 is the true minimum; 2x 4th-order finite difference patches
+        # will be stacked to extract the flux then the flux density, which means
+        # 7 cells see direct interaction with boundary conditions and must not
+        # have nonzero current density to produce sane results; npad = 6 produces junk outputs.
+        npad = 7
         nr = len(unique_r) + 2 * npad
         nz = len(unique_z) + 2 * npad
         r_pad = npad * drmean
         z_pad = npad * dzmean
         rgrid = np.linspace(unique_r[0] - r_pad, unique_r[-1] + r_pad, nr)
         zgrid = np.linspace(unique_z[0] - z_pad, unique_z[-1] + z_pad, nz)
+
+        # Make sure the grid doesn't cross zero.
+        # If this check becomes a problem, there is an alternate strategy
+        # to double resolution and spread the coil's current density mapping
+        # across more than one neighboring cell, but that is too much complexity
+        # to implement proactively.
+        if rgrid[0] < 0.0:
+            return None
 
         return (rgrid, zgrid)
 
@@ -140,18 +153,22 @@ class Coil:
                 jtor[ri, zi] += f.n / area
 
             # Solve flux field
-            psi = solve_flux_axisymmetric(grids, meshes, jtor)
+            psi = solve_flux_axisymmetric(grids, meshes, jtor)  # [Wb/A]
 
             # Extract flux density
-            br, bz = calc_flux_density_from_flux(psi, rmesh, zmesh)
+            br, bz = calc_flux_density_from_flux(psi, rmesh, zmesh)  # [T/A]
 
             return psi, br, bz
 
         else:
             return None
-        
+
     @cached_property
-    def local_field_interpolators(self) -> Optional[tuple[MulticubicRectilinear, MulticubicRectilinear, MulticubicRectilinear]]:
+    def local_field_interpolators(
+        self,
+    ) -> Optional[
+        tuple[MulticubicRectilinear, MulticubicRectilinear, MulticubicRectilinear]
+    ]:
         """Build interpolators over the solved local fields, if available"""
         grids = self.grids
         local_fields = self.local_fields
@@ -165,6 +182,13 @@ class Coil:
             return psi_interp, br_interp, bz_interp
         else:
             return None
+
+    @cached_property
+    def extent(self) -> tuple[float, float, float, float]:
+        """[m] rmin, rmax, zmin, zmax extent of filament centers"""
+        r = [f.r for f in self.filaments]
+        z = [f.z for f in self.filaments]
+        return min(r), max(r), min(z), max(z)
 
 
 def _extract_coils(description: ODS) -> list[Coil]:

@@ -274,3 +274,38 @@ def _check_regular(grids: tuple[NDArray, NDArray], tol=1e-6) -> tuple[float, flo
     assert np.all(np.abs(dzs - dzmean) / dzmean < 1e-4), "Grids must be regular"
 
     return drmean, dzmean  # [m]
+
+
+def _rect_mask(
+    meshes: tuple[NDArray, NDArray],
+    extent: tuple[float, float, float, float],
+    pad: tuple[float, float] = (0.0, 0.0),
+) -> tuple[NDArray, tuple[NDArray[np.intp], ...]]:
+    """
+    Get a boolean mask and interior indices of the rectangular region
+    of an R-Z mesh spanned by an extent with padding.
+
+    Args:
+        meshes: [m] 2D r,z meshgrids
+        extent: [m] rmin, rmax, zmin, zmax extent of region to mask
+        pad: [m] r,z padding to add on either side of the extent. Defaults to (0.0, 0.0).
+
+    Returns:
+        2D mask, interior indices
+    """
+    rmin, rmax, zmin, zmax = extent  # all [m]
+    rpad, zpad = pad
+    rmesh, zmesh = meshes
+
+    # Apply padding
+    rmin, rmax, zmin, zmax = rmin - rpad, rmax + rpad, zmin - zpad, zmax + zpad
+
+    # Build mask
+    mask = np.ones_like(rmesh)
+    mask *= np.where(rmesh >= rmin, True, False)
+    mask *= np.where(rmesh <= rmax, True, False)
+    mask *= np.where(zmesh >= zmin, True, False)
+    mask *= np.where(zmesh <= zmax, True, False)
+    inds = np.where(mask > 0.0)
+
+    return mask, inds
