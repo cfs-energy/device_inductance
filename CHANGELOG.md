@@ -5,11 +5,12 @@
 ### Added
 
 * `utils.flux_solver` and `utils.solve_flux_axisymmetric` functions extracted from device for solving continuous flux fields by finite difference
-* `coils.Coil.[grids, meshes, local_flux_table]` cached properties for solving a smooth self-field over coil winding packs if they can be mapped on to a regular grid
+* `coils.Coil.[grids, meshes, extent, local_flux_table]` cached properties for solving a smooth self-field over coil winding packs if they can be mapped on to a regular grid
 
 ### Changed
 
 * Plasma flux functions defer to new flux solver functions in `utils`
+* Update coil flux table procedure to patch coil local field from coil-specific Grad-Shafranov solve over region near winding pack
 
 ## 1.7.4 - 2024-10-09
 
