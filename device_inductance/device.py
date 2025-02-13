@@ -48,6 +48,8 @@ from device_inductance.utils import (
     calc_flux_density_from_flux,
     flux_solver,
     solve_flux_axisymmetric,
+    _join_extents,
+    _pad_extent,
 )
 from device_inductance import model_reduction
 
@@ -78,7 +80,7 @@ class DeviceInductance:
     This will be updated during mesh initialization, during which it
     may be adjusted to satisfy the required spatial resolution.
     """
-    _dxgrid: tuple[float, float] = (0.0, 0.0)
+    _dxgrid: tuple[float, float] = (0.05, 0.05)
     """[m] spatial resolution of computational grid"""
     _model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode"
     """Choice of method for truncating passive structure system modes"""
@@ -90,7 +92,7 @@ class DeviceInductance:
         ods: ODS,
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
-        dxgrid: tuple[float, float] = (0.0, 0.0),
+        dxgrid: tuple[float, float] = (0.05, 0.05),
         model_reduction_method: Literal[
             "eigenmode", "stabilized eigenmode"
         ] = "eigenmode",
@@ -127,6 +129,22 @@ class DeviceInductance:
         return hash(id(self))
 
     def __post_init__(self):
+        # Set a sensible default that encompasses the coils with 0.1m pad if none was provided
+        if self._min_extent == (0.0, 0.0, 0.0, 0.0):
+            inf = float("inf")
+            self._min_extent = (inf, -inf, inf, -inf)
+            for c in self.coils:
+                self._min_extent = _join_extents(self._min_extent, c.extent)
+            self._min_extent = _pad_extent(self._min_extent, (0.1, 0.1))
+            # Don't auto-place grid cells too close to R=0
+            rmin, rmax, zmin, zmax = self._min_extent
+            rmin = max(rmin, 0.1)
+            self._min_extent = (rmin, rmax, zmin, zmax)
+
+        # Set a sensible default grid resolution to avoid dividing by zero
+        if self._dxgrid == (0.0, 0.0):
+            self._dxgrid = (0.05, 0.05)
+
         # Immutable after init, except for new cache entries
         def setattr_err(*_, **__):
             raise NotImplementedError(

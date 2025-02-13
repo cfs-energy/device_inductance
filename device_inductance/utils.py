@@ -309,3 +309,21 @@ def _rect_mask(
     inds = np.where(mask > 0.0)
 
     return mask, inds
+
+
+def _pad_extent(
+    extent: tuple[float, float, float, float], pad: tuple[float, float]
+) -> tuple[float, float, float, float]:
+    """Add r,z padding to both sides of an extent"""
+    rmin, rmax, zmin, zmax = extent
+    rpad, zpad = pad
+    return rmin - rpad, rmax + rpad, zmin - zpad, zmax + zpad
+
+
+def _join_extents(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> tuple[float, float, float, float]:
+    """The union of two rmin, rmax, zmin, zmax extents"""
+    rmina, rmaxa, zmina, zmaxa = a
+    rminb, rmaxb, zminb, zmaxb = b
+    return min(rmina, rminb), max(rmaxa, rmaxb), min(zmina, zminb), max(zmaxa, zmaxb)

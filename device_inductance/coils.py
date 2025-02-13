@@ -63,14 +63,24 @@ class Coil:
         Adds 4 grid cells of padding around the winding pack to deconflict the
         cells with nonzero current density from the boundary conditions of a
         flux solve.
+
+        If only one unit cell is present on either axis, the grid will be
+        expanded 1cm in either direction.
         """
 
         # Get coordinates with a unit cell
         unique_r = np.array(sorted(list(set([f.r for f in self.filaments]))))  # [m]
         unique_z = np.array(sorted(list(set([f.z for f in self.filaments]))))
 
-        # Make sure there are enough unit cells to work with
-        if len(unique_r) == 0 or len(unique_z) == 0:
+        # Make sure there are enough unit cells to work with,
+        # expanding 
+        if len(unique_r) == 1:
+            r = unique_r[0]
+            unique_r = [r - 1e-2, r, r + 1e-2]
+        if len(unique_z) == 1:
+            z = unique_z[0]
+            unique_z = [z - 1e-2, z, z + 1e-2]
+        if len(unique_r) < 2 or len(unique_z) < 2:
             return None
 
         # Check if the coordinates have regular spacing

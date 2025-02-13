@@ -11,6 +11,7 @@
 
 * Plasma flux functions defer to new flux solver functions in `utils`
 * Update coil flux table procedure to patch coil local field from coil-specific Grad-Shafranov solve over region near winding pack
+* Add sensible defaults for mesh extent and resolution (coil extent + 0.1m pad and 0.05m resolution)
 
 ## 1.7.4 - 2024-10-09
 
