@@ -23,7 +23,7 @@ from interpn import MulticubicRectilinear
 class CoilFilament:
     """
     A discretized element of an axisymmetric magnet.
-    Self-inductance is calculated based on conductor geoemtry.
+    Self-inductance is calculated based on conductor geometry.
     """
 
     r: float
