@@ -260,7 +260,7 @@ def _calc_mesh_flux_tables(
         ).reshape(shape)
         # Replace singular self-term with 6th order rectangular-section calc
         psi_mesh_mesh[i, ir, iz] = self_inductance_lyle6(
-            rgrid[ir], float(dr), float(dz), n=1.0
+            float(rgrid[ir]), float(dr), float(dz), n=1.0
         )
 
     return np.ascontiguousarray(psi_mesh_mesh)  # [Wb/A]

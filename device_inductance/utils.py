@@ -268,8 +268,8 @@ def _check_regular(grids: tuple[NDArray, NDArray], tol=1e-6) -> tuple[float, flo
     rgrid, zgrid = grids
     drs = np.diff(rgrid)
     dzs = np.diff(zgrid)
-    drmean = np.mean(drs)
-    dzmean = np.mean(dzs)
+    drmean = float(np.mean(drs))
+    dzmean = float(np.mean(dzs))
     assert np.all(np.abs(drs - drmean) / drmean < 1e-4), "Grids must be regular"
     assert np.all(np.abs(dzs - dzmean) / dzmean < 1e-4), "Grids must be regular"
 

@@ -117,7 +117,8 @@ class Coil:
         """
         grids = self.grids
         if grids is not None:
-            return np.meshgrid(*grids, indexing="ij")
+            rmesh, zmesh = np.meshgrid(*grids, indexing="ij")
+            return (rmesh, zmesh)  # Unpack and repack for pyright...
         else:
             return None
 
@@ -175,6 +176,7 @@ class Coil:
 
         if grids is not None and local_fields is not None:
             psi, br, bz = local_fields
+            grids = [x for x in grids]
             psi_interp = MulticubicRectilinear.new(grids, psi)
             br_interp = MulticubicRectilinear.new(grids, br)
             bz_interp = MulticubicRectilinear.new(grids, bz)
