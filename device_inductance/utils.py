@@ -1,8 +1,14 @@
 from datetime import datetime
-from typing import TypeVar, Iterator
+from typing import TypeVar, Iterator, Optional, Callable
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.constants import mu_0
+
+from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import factorized
+
+from cfsem import gs_operator_order4, flux_circular_filament
 
 
 T = TypeVar("T")
@@ -172,3 +178,152 @@ def calc_flux_density_from_flux(
     bz = r_inv * dpsidr / (2.0 * np.pi)  # [T]
 
     return (br, bz)
+
+
+def flux_solver(grids: tuple[NDArray, NDArray]) -> Callable[[NDArray], NDArray]:
+    """
+    Linear solver for extracting a flux field from a toroidal current density distribution
+    using a 4th-order finite difference approximation of the Grad-Shafranov PDE.
+    For `jtor` toroidal current density shaped like (nr, nz), call like `psi = flux_solver(rhs)`
+    to get `psi` in [Wb] or [V-s], where `rhs = -2.0 * np.pi * mu_0 * rmesh * jtor` with the boundary
+    values set to the circular-filament solved flux.
+
+    Args:
+        grids: [m] regular 1D r,z grids
+
+    Returns:
+        solver: factorized solver for Grad-Shafranov differential operator
+    """
+    # Build Grad-Shafranov Delta* linear operator for finite difference
+    # as a sparse matrix
+    _ = _check_regular(grids)
+    rgrid, zgrid = grids
+    nr = rgrid.size
+    nz = zgrid.size
+    vals, rows, cols = gs_operator_order4(*grids)
+    operator = csc_matrix((vals, (rows, cols)), shape=(nr * nz, nr * nz))
+    # Store LU factorization of operator matrix to allow fast, reusable
+    # solves using different right-hand-side (different current density)
+    return factorized(operator)
+
+
+def solve_flux_axisymmetric(
+    grids: tuple[NDArray, NDArray],
+    meshes: tuple[NDArray, NDArray],
+    current_density: NDArray,
+    solver: Optional[Callable[[NDArray], NDArray]] = None,
+) -> NDArray:
+    """
+    Calculate the flux field associated with a given toroidal current density distribution,
+    by solving the Grad-Shafranov PDE.
+
+    This calculation is most commonly used for the plasma, but is in fact more general,
+    and applies to anything with an equivalent toroidal current density and axisymmetry.
+
+    Args:
+        grids: [m] 1D r,z regular coordinate grids
+        meshes: [m] 2D meshgrids made from grids like np.meshgrid(*grids, indexing="ij")
+        current_density: [A/m^2], shape (nr, nz), toroidal current density on finite-difference mesh
+        solver: Optionally, provide a pre-initialized linear solver. See `cfsem.utils.flux_solver`.
+
+    Returns:
+        poloidal flux field, [Wb] with shape (nr, nz)
+    """
+    # Build the differential operator, if needed
+    solver = solver or flux_solver(grids)
+
+    # Unpack and filter down to just useful inputs
+    dr, dz = _check_regular(grids)  # [m] grid spacing
+    area = dr * dz  # [m^2]
+    rmesh, zmesh = meshes  # [m]
+    nonzero_inds = np.where(current_density != 0.0)
+    current_density_nonzero = np.ascontiguousarray(
+        current_density[nonzero_inds]
+    )  # [A/m^2]
+    rmesh_nonzero = np.ascontiguousarray(rmesh[nonzero_inds])  # [m]
+    zmesh_nonzero = np.ascontiguousarray(zmesh[nonzero_inds])  # [m]
+    # Solve `Delta* @ psi = -mu_0 * 2pi * rmesh * jtor`
+    #   Set up right-hand-side of Grad-Shafranov
+    rhs = -(2.0 * np.pi * mu_0) * rmesh * current_density  # [Wb/m^2]
+    #   Set flux boundary condition
+    #   For most relevant grid sizes (up to 500 X 500), doing the O(N^3)
+    #   circular-filament flux calc is faster than the linear solve
+    #   and therefore faster than doing an extra fixed-boundary linear solve
+    #   in order to use Von Hagenow's asymptotically-O(N^2logN) method.
+    ifil = (area * current_density_nonzero).flatten()  # [A] plasma filament current
+    rfil = rmesh_nonzero.flatten()
+    zfil = zmesh_nonzero.flatten()
+    for s in [[0, ...], [-1, ...], [..., 0], [..., -1]]:  # All boundary slices
+        rhs[s[0], s[1]] = flux_circular_filament(
+            ifil, rfil, zfil, rmesh[s[0], s[1]], zmesh[s[0], s[1]]
+        )
+    #   Do the actual linear solve
+    psi = solver(rhs.flatten()).reshape(rmesh.shape)  # [Wb]
+
+    return psi
+
+
+def _check_regular(grids: tuple[NDArray, NDArray], tol=1e-6) -> tuple[float, float]:
+    """Check that grids are regular and returns spacing"""
+    rgrid, zgrid = grids
+    drs = np.diff(rgrid)
+    dzs = np.diff(zgrid)
+    drmean = float(np.mean(drs))
+    dzmean = float(np.mean(dzs))
+    assert np.all(np.abs(drs - drmean) / drmean < 1e-4), "Grids must be regular"
+    assert np.all(np.abs(dzs - dzmean) / dzmean < 1e-4), "Grids must be regular"
+
+    return drmean, dzmean  # [m]
+
+
+def _rect_mask(
+    meshes: tuple[NDArray, NDArray],
+    extent: tuple[float, float, float, float],
+    pad: tuple[float, float] = (0.0, 0.0),
+) -> tuple[NDArray, tuple[NDArray[np.intp], ...]]:
+    """
+    Get a boolean mask and interior indices of the rectangular region
+    of an R-Z mesh spanned by an extent with padding.
+
+    Args:
+        meshes: [m] 2D r,z meshgrids
+        extent: [m] rmin, rmax, zmin, zmax extent of region to mask
+        pad: [m] r,z padding to add on either side of the extent. Defaults to (0.0, 0.0).
+
+    Returns:
+        2D mask, interior indices
+    """
+    rmin, rmax, zmin, zmax = extent  # all [m]
+    rpad, zpad = pad
+    rmesh, zmesh = meshes
+
+    # Apply padding
+    rmin, rmax, zmin, zmax = rmin - rpad, rmax + rpad, zmin - zpad, zmax + zpad
+
+    # Build mask
+    mask = np.ones_like(rmesh)
+    mask *= np.where(rmesh >= rmin, True, False)
+    mask *= np.where(rmesh <= rmax, True, False)
+    mask *= np.where(zmesh >= zmin, True, False)
+    mask *= np.where(zmesh <= zmax, True, False)
+    inds = np.where(mask > 0.0)
+
+    return mask, inds
+
+
+def _pad_extent(
+    extent: tuple[float, float, float, float], pad: tuple[float, float]
+) -> tuple[float, float, float, float]:
+    """Add r,z padding to both sides of an extent"""
+    rmin, rmax, zmin, zmax = extent
+    rpad, zpad = pad
+    return rmin - rpad, rmax + rpad, zmin - zpad, zmax + zpad
+
+
+def _join_extents(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> tuple[float, float, float, float]:
+    """The union of two rmin, rmax, zmin, zmax extents"""
+    rmina, rmaxa, zmina, zmaxa = a
+    rminb, rmaxb, zminb, zmaxb = b
+    return min(rmina, rminb), max(rmaxa, rmaxb), min(zmina, zminb), max(zmaxa, zmaxb)

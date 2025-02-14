@@ -7,13 +7,7 @@ from functools import cached_property
 import numpy as np
 from numpy.typing import NDArray
 
-from scipy.constants import mu_0
-from scipy.sparse import csc_matrix
-from scipy.sparse.linalg import factorized
-
 from cfsem import (
-    gs_operator_order4,
-    flux_circular_filament,
     self_inductance_distributed_axisymmetric_conductor,
 )
 
@@ -51,7 +45,11 @@ from device_inductance.tables import (
     _calc_circuit_flux_density_tables,
 )
 from device_inductance.utils import (
-    calc_flux_density_from_flux
+    calc_flux_density_from_flux,
+    flux_solver,
+    solve_flux_axisymmetric,
+    _join_extents,
+    _pad_extent,
 )
 from device_inductance import model_reduction
 
@@ -60,7 +58,7 @@ F64 = np.float64
 
 class DeviceInductance:
     """
-    Thin wrapper to provide methods and properties on a device description ODS. 
+    Thin wrapper to provide methods and properties on a device description ODS.
     Extracts geometries and calculates inductance matrices as well as flux fields
     and B-fields on the generated regular grid.
 
@@ -82,7 +80,7 @@ class DeviceInductance:
     This will be updated during mesh initialization, during which it
     may be adjusted to satisfy the required spatial resolution.
     """
-    _dxgrid: tuple[float, float] = (0.0, 0.0)
+    _dxgrid: tuple[float, float] = (0.05, 0.05)
     """[m] spatial resolution of computational grid"""
     _model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode"
     """Choice of method for truncating passive structure system modes"""
@@ -94,7 +92,7 @@ class DeviceInductance:
         ods: ODS,
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
-        dxgrid: tuple[float, float] = (0.0, 0.0),
+        dxgrid: tuple[float, float] = (0.05, 0.05),
         model_reduction_method: Literal[
             "eigenmode", "stabilized eigenmode"
         ] = "eigenmode",
@@ -131,6 +129,22 @@ class DeviceInductance:
         return hash(id(self))
 
     def __post_init__(self):
+        # Set a sensible default that encompasses the coils with 0.1m pad if none was provided
+        if self._min_extent == (0.0, 0.0, 0.0, 0.0):
+            inf = float("inf")
+            self._min_extent = (inf, -inf, inf, -inf)
+            for c in self.coils:
+                self._min_extent = _join_extents(self._min_extent, c.extent)
+            self._min_extent = _pad_extent(self._min_extent, (0.1, 0.1))
+            # Don't auto-place grid cells too close to R=0
+            rmin, rmax, zmin, zmax = self._min_extent
+            rmin = max(rmin, 0.1)
+            self._min_extent = (rmin, rmax, zmin, zmax)
+
+        # Set a sensible default grid resolution to avoid dividing by zero
+        if self._dxgrid == (0.0, 0.0):
+            self._dxgrid = (0.05, 0.05)
+
         # Immutable after init, except for new cache entries
         def setattr_err(*_, **__):
             raise NotImplementedError(
@@ -512,14 +526,7 @@ class DeviceInductance:
         to get `psi` in [Wb] or [V-s], where `rhs = -2.0 * np.pi * mu_0 * rmesh * jtor` with the boundary
         values set to the circular-filament solved flux.
         """
-        # Build Grad-Shafranov Delta* linear operator for finite difference
-        # as a sparse matrix
-        nr, nz = self.meshes[0].shape
-        vals, rows, cols = gs_operator_order4(*self.grids)
-        operator = csc_matrix((vals, (rows, cols)), shape=(nr * nz, nr * nz))
-        # Store LU factorization of operator matrix to allow fast, reusable
-        # solves using different right-hand-side (different plasma current density)
-        return factorized(operator)
+        return flux_solver(self.grids)
 
     def get_coil_names(self) -> list[str]:
         """Get coil names in the same order as their indices"""
@@ -564,42 +571,18 @@ class DeviceInductance:
         assert (
             current_density.shape == self.meshes[0].shape
         ), "Supplied current density shape does not match tables"
-        dr, dz = self.dxgrid  # [m] grid discretization
-        area = dr * dz  # [m^2] cross-sectional area of grid cell
         if calc_method == "table":
+            dr, dz = self.dxgrid  # [m] grid discretization
+            area = dr * dz  # [m^2] cross-sectional area of grid cell
             psi = np.zeros_like(current_density)  # [Wb]
             for i, jtor_cell in enumerate(current_density.flatten()):  # [A/m^2]
                 psi_table_part = self.plasma_flux_tables[i, :, :]  # [Wb/A]
                 current = jtor_cell * area  # [A]
                 psi += current * psi_table_part  # [Wb]
         elif calc_method == "solve":
-            # Unpack and filter down to just useful inputs
-            rmesh, zmesh = self.meshes  # [m]
-            nonzero_inds = np.where(current_density != 0.0)
-            current_density_nonzero = np.ascontiguousarray(
-                current_density[nonzero_inds]
-            )  # [A/m^2]
-            rmesh_nonzero = np.ascontiguousarray(rmesh[nonzero_inds])  # [m]
-            zmesh_nonzero = np.ascontiguousarray(zmesh[nonzero_inds])  # [m]
-            # Solve `Delta* @ psi = -mu_0 * 2pi * rmesh * jtor`
-            #   Set up right-hand-side of Grad-Shafranov
-            rhs = -(2.0 * np.pi * mu_0) * rmesh * current_density  # [Wb/m^2]
-            #   Set flux boundary condition
-            #   For most relevant grid sizes (up to 500 X 500), doing the O(N^3)
-            #   circular-filament flux calc is faster than the linear solve
-            #   and therefore faster than doing an extra fixed-boundary linear solve
-            #   in order to use Von Hagenow's asymptotically-O(N^2logN) method.
-            ifil = (
-                area * current_density_nonzero
-            ).flatten()  # [A] plasma filament current
-            rfil = rmesh_nonzero.flatten()
-            zfil = zmesh_nonzero.flatten()
-            for s in [[0, ...], [-1, ...], [..., 0], [..., -1]]:  # All boundary slices
-                rhs[s[0], s[1]] = flux_circular_filament(
-                    ifil, rfil, zfil, rmesh[s[0], s[1]], zmesh[s[0], s[1]]
-                )
-            #   Do the actual linear solve
-            psi = self.flux_solver(rhs.flatten()).reshape(rmesh.shape)  # [Wb]
+            psi = solve_flux_axisymmetric(
+                self.grids, self.meshes, current_density, self.flux_solver
+            )
 
         return psi  # [Wb]
 
@@ -641,20 +624,20 @@ class DeviceInductance:
         the inductive system will result in motion of the plasma current distribution,
         which changes the plasma self-inductance, the instantaneous self-inductance only
         provides one of two terms in determining the loop voltage response of the plasma.
-        
+
         With a system of just the plasma and examining only inductive voltage for clarity:
 
         ```
         V_loop = I*(dL/dt) + L*(dI/dt) = I*(dL/dI)*(dI/dt) + L*(dI/dt)
                              ^                ^
                              |                |
-           This formula's L  -                - This quantity is also needed 
+           This formula's L  -                - This quantity is also needed
                                                 for a linear treatment
         ```
 
         This extends to coupled systems with multiple inductors in a similar way.
 
-        Details of the method used can be found in the 
+        Details of the method used can be found in the
         [docs for cfsem.](https://cfsem-py.readthedocs.io/en/latest/python/inductance/#cfsem.self_inductance_distributed_axisymmetric_conductor)
 
         Args:

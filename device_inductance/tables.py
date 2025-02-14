@@ -8,7 +8,11 @@ from numpy.typing import NDArray
 from device_inductance.coils import Coil
 from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.structures import PassiveStructureFilament
-from device_inductance.utils import _progressbar, calc_flux_density_from_flux
+from device_inductance.utils import (
+    _progressbar,
+    calc_flux_density_from_flux,
+    _rect_mask,
+)
 
 from cfsem import (
     flux_circular_filament,
@@ -24,6 +28,18 @@ the flux calcs are numerically better-conditioned.
 """
 
 
+def _table_mask(
+    meshes: tuple[NDArray, NDArray], extent: tuple[float, float, float, float]
+) -> tuple[NDArray, tuple[NDArray[np.intp], ...]]:
+    """Get a mask with padding of max(2*dx, _MIN_DIST) on each axis"""
+    rmesh, zmesh = meshes
+    dr = rmesh[1, 0] - rmesh[0, 0]  # [m]
+    dz = zmesh[0, 1] - zmesh[0, 0]  # [m]
+    rdelta = max(2 * dr, _MIN_DIST)  # [m]
+    zdelta = max(2 * dz, _MIN_DIST)  # [m]
+    return _rect_mask(meshes, extent, pad=(rdelta, zdelta))
+
+
 def _calc_coil_flux_tables(
     coils: list[Coil], meshes: tuple[NDArray, NDArray], show_prog: bool = True
 ) -> NDArray:
@@ -33,7 +49,7 @@ def _calc_coil_flux_tables(
     shape = meshes[0].shape
     nr, nz = meshes[0].shape
 
-    # Calculate
+    # Calculate tables using filament calcs
     coil_table_shape = (ncoil, nr, nz)  # This ordering makes each table contiguous
     psi_mesh_coils = np.zeros(coil_table_shape)  # [Wb/A]
     items = [x for x in enumerate(coils)]
@@ -46,9 +62,23 @@ def _calc_coil_flux_tables(
         zfil = np.array([e.z for e in c.filaments])  # [m]
         psi_mesh_coils[i, :, :] = flux_circular_filament(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
-        ).reshape(
-            shape
-        )  # [Wb/A]
+        ).reshape(shape)  # [Wb/A]
+
+        # For coils with their winding pack on a regular grid, patch over the field near the coil
+        # with a local axisymmetric flux solve
+        cgrids = c.grids
+        cmeshes = c.meshes
+        cinterp = c.local_field_interpolators
+        if cgrids is not None and cmeshes is not None and cinterp is not None:
+            # Figure out which points to replace with the local field
+            cpsi, _, _ = cinterp
+            extent = c.extent
+            _, inds = _table_mask(meshes, extent)
+
+            # Replace points with local field solve
+            robs = rmesh[inds].flatten()
+            zobs = zmesh[inds].flatten()
+            psi_mesh_coils[i, :, :][inds] = cpsi.eval([robs, zobs])
 
     return np.ascontiguousarray(psi_mesh_coils)  # [Wb/A]
 
@@ -64,8 +94,6 @@ def _calc_coil_flux_density_tables(
     rmesh, zmesh = meshes  # [m]
     shape = meshes[0].shape
     nr, nz = meshes[0].shape
-    dr = rmesh[1, 0] - rmesh[0, 0]  # [m]
-    dz = zmesh[0, 1] - zmesh[0, 0]  # [m]
 
     # Calculate
     coil_table_shape = (ncoil, nr, nz)  # This ordering makes each table contiguous
@@ -85,23 +113,14 @@ def _calc_coil_flux_density_tables(
         br_mesh_coils[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_coils[i, :, :] = b[1].reshape(shape)  # [T/A]
 
-        # Because the flux density filament calc has an addition 1/r^2 factor compared to
+        # Because the flux density filament calc has an additional 1/r^2 factor compared to
         # the flux calc, it is not as well-conditioned numerically and will tend to give
         # worse results for observation points very close to the coil filaments.
         # In order to remedy this, we can patch over the region immediately near the coil
         # winding pack using a B-field calc that comes from the flux calc, giving better
         # floating-point error at the expense of some discretization error.
         #    Figure out what part we're replacing
-        rdelta = max(2 * dr, _MIN_DIST)  # [m]
-        zdelta = max(2 * dz, _MIN_DIST)  # [m]
-        rmin, rmax = np.min(rfil) - rdelta, np.max(rfil) + rdelta
-        zmin, zmax = np.min(zfil) - zdelta, np.max(zfil) + zdelta
-        mask = np.ones_like(rmesh)
-        mask *= np.where(rmesh >= rmin, True, False)
-        mask *= np.where(rmesh <= rmax, True, False)
-        mask *= np.where(zmesh >= zmin, True, False)
-        mask *= np.where(zmesh <= zmax, True, False)
-        inds = np.where(mask > 0.0)
+        _, inds = _table_mask(meshes, c.extent)
         #    Do the replacement
         br_from_psi, bz_from_psi = calc_flux_density_from_flux(
             coil_flux_tables[i, :, :], rmesh, zmesh
@@ -141,9 +160,7 @@ def _calc_structure_flux_tables(
         zfil = np.array([e.z])  # [m]
         psi_mesh_structures[i, :, :] = flux_circular_filament(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
-        ).reshape(
-            shape
-        )  # [Wb/A]
+        ).reshape(shape)  # [Wb/A]
 
     return np.ascontiguousarray(psi_mesh_structures)  # [Wb/A]
 
@@ -243,7 +260,7 @@ def _calc_mesh_flux_tables(
         ).reshape(shape)
         # Replace singular self-term with 6th order rectangular-section calc
         psi_mesh_mesh[i, ir, iz] = self_inductance_lyle6(
-            rgrid[ir], float(dr), float(dz), n=1.0
+            float(rgrid[ir]), float(dr), float(dz), n=1.0
         )
 
     return np.ascontiguousarray(psi_mesh_mesh)  # [Wb/A]
