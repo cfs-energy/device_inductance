@@ -73,7 +73,7 @@ class Coil:
         unique_z = np.array(sorted(list(set([f.z for f in self.filaments]))))
 
         # Make sure there are enough unit cells to work with,
-        # expanding 
+        # expanding dimensions if necessary
         if len(unique_r) == 1:
             r = unique_r[0]
             unique_r = [r - 1e-2, r, r + 1e-2]
@@ -83,7 +83,8 @@ class Coil:
         if len(unique_r) < 2 or len(unique_z) < 2:
             return None
 
-        # Check if the coordinates have regular spacing
+        # Check if the coordinates have regular spacing,
+        # which is required to support the finite difference solve
         drs = np.diff(unique_r)
         drmean = np.mean(drs)
         if np.any(np.abs(drs - drmean) / drmean > 1e-4):
