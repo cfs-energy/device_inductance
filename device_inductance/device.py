@@ -7,6 +7,8 @@ from functools import cached_property
 import numpy as np
 from numpy.typing import NDArray
 
+from device_inductance.logging import logger_is_set_up, logger_setup_default
+
 from cfsem import (
     self_inductance_distributed_axisymmetric_conductor,
 )
@@ -114,6 +116,9 @@ class DeviceInductance:
         if "extent" in kwargs.keys():
             # Backwards compatibility with `extent` kwarg name only
             min_extent = kwargs["extent"]
+
+        if not logger_is_set_up():
+            logger_setup_default()
 
         self._ods = ods
         self._max_nmodes = max_nmodes

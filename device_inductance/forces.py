@@ -7,6 +7,7 @@ from device_inductance import Coil, PassiveStructureFilament
 from device_inductance.device import F64
 from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.utils import _progressbar
+from device_inductance.logging import log
 
 from interpn import MulticubicRectilinear
 
@@ -24,6 +25,9 @@ def _calc_coil_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray
         br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
         bz_interp = MulticubicRectilinear.new(grids, bz)
         for j in range(ncoils):
+            if i == j and coils[i].local_fields is None:
+                log().warning(f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation")
+                continue
             length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
             obs = [coils[j].rs, coils[j].zs]  # [m] observation points (filament locations)
             fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
