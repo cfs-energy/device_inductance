@@ -47,7 +47,7 @@ The flow of information is
 
 [Input: ODS object] -> `device_inductance.DeviceInductance` -> Analysis -> [Output: Grids, Matrices, & Tables]
 
-where the ODS object must be in the format provided by `device_description`.
+where the ODS object must be in the format provided by the device description, which uses a subset of the full ODS format.
 
 To quickly compute the most commonly used items,
 

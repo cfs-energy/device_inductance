@@ -202,6 +202,21 @@ class Coil:
         r = [f.r for f in self.filaments]
         z = [f.z for f in self.filaments]
         return min(r), max(r), min(z), max(z)
+    
+    @cached_property
+    def rs(self) -> NDArray:
+        """[m] Filament r-coordinates"""
+        return np.array([f.r for f in self.filaments])
+    
+    @cached_property
+    def zs(self) -> NDArray:
+        """[m] Filament z-coordinates"""
+        return np.array([f.z for f in self.filaments])
+    
+    @cached_property
+    def ns(self) -> NDArray:
+        """[dimensionless] Filament number of turns"""
+        return np.array([f.n for f in self.filaments])
 
 
 def _extract_coils(description: ODS) -> list[Coil]:
