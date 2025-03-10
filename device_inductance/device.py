@@ -46,7 +46,7 @@ from device_inductance.tables import (
     _calc_circuit_flux_tables,
     _calc_circuit_flux_density_tables,
 )
-from device_inductance.forces import _calc_coil_coil_forces, _calc_circuit_coil_forces
+from device_inductance.forces import _calc_coil_coil_forces, _calc_circuit_coil_forces, _calc_structure_coil_forces
 from device_inductance.utils import (
     calc_flux_density_from_flux,
     flux_solver,
@@ -520,7 +520,7 @@ class DeviceInductance:
     @cached_property
     def structure_coil_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components"""
-        raise NotImplementedError
+        return _calc_structure_coil_forces(self.coils, self.grids, self.structure_flux_density_tables, self.show_prog)
 
     @cached_property
     def structure_mode_coil_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
