@@ -24,7 +24,8 @@ def _calc_coil_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray
         bz = coil_flux_density_tables[1][i, :, :]
         br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
         bz_interp = MulticubicRectilinear.new(grids, bz)
-        for j in range(ncoils):
+        items = _progressbar([x for x in range(ncoils)], "Coil-coil force columns") if show_prog else range(ncoils)
+        for j in items:
             if i == j and coils[i].local_fields is None:
                 log().warning(f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation")
                 continue
