@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "device_inductance"
-version = "1.8.0"
+version = "1.9.0"
 description = "Tokamak core inductance matrices and flux tables"
 authors = ["Commonwealth Fusion Systems <jlogan@cfs.energy>"]
 license = "MIT OR Apache-2.0"
@@ -25,7 +25,7 @@ gmsh = "^4.13.1"
 shapely = "^2.0.2"
 scipy = "^1.12"
 interpn = "^0.2.3"
-cfsem = "^2.1.0"
+cfsem = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 # Tests

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0 - 2025-03-10
+
+### Added
+
+* Coil, circuit, conducting structure, and structure mode "force Green's" tables
+  * These tables describe the total R- and Z- force applied to a unit toroidal current filament at each location in the grid
+
 ## 1.8.0 - 2025-02-12
 
 ### Added
