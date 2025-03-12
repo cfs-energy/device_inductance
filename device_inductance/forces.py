@@ -3,15 +3,23 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from device_inductance import Coil, PassiveStructureFilament
+from device_inductance import Coil
 from device_inductance.device import F64
 from device_inductance.circuits import CoilSeriesCircuit
-from device_inductance.utils import _progressbar
+from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 from device_inductance.logging import log
+
+from cfsem import flux_density_circular_filament
 
 from interpn import MulticubicRectilinear
 
-def _calc_coil_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray[F64]], coil_flux_density_tables: tuple[NDArray[F64], NDArray[F64]], show_prog: bool = True) -> tuple[NDArray[F64], NDArray[F64]]:
+
+def _calc_coil_coil_forces(
+    coils: list[Coil],
+    grids: tuple[NDArray[F64], NDArray[F64]],
+    coil_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    show_prog: bool = True,
+) -> tuple[NDArray[F64], NDArray[F64]]:
     ncoils = len(coils)
     fr = np.zeros((ncoils, ncoils))  # [N/A^2]
     fz = np.zeros((ncoils, ncoils))
@@ -19,7 +27,11 @@ def _calc_coil_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray
     # Calculate force per amp from each coil `i` to each coil `j`
     # using the baked tables, which include the self-field solve patch
     # when it is available (for coils that fall on a regular grid)
-    items = _progressbar([x for x in range(ncoils)], "Coil-coil force rows") if show_prog else range(ncoils)
+    items = (
+        _progressbar([x for x in range(ncoils)], "Coil-coil force rows")
+        if show_prog
+        else range(ncoils)
+    )
     for i in items:
         br = coil_flux_density_tables[0][i, :, :]  # [T/A]
         bz = coil_flux_density_tables[1][i, :, :]
@@ -27,24 +39,39 @@ def _calc_coil_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray
         bz_interp = MulticubicRectilinear.new(grids, bz)
         for j in range(ncoils):
             if i == j and coils[i].local_fields is None:
-                log().warning(f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation")
+                log().warning(
+                    f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation"
+                )
                 continue
             # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
             length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
-            obs = [coils[j].rs, coils[j].zs]  # [m] observation points (filament locations)
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
             fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
             fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
-    
+
     return (fr, fz)
 
-def _calc_circuit_coil_forces(coils: list[Coil], circuits: list[CoilSeriesCircuit], coil_coil_forces: tuple[NDArray[F64], NDArray[F64]], show_prog: bool = True) -> tuple[NDArray[F64], NDArray[F64]]:
+
+def _calc_circuit_coil_forces(
+    coils: list[Coil],
+    circuits: list[CoilSeriesCircuit],
+    coil_coil_forces: tuple[NDArray[F64], NDArray[F64]],
+    show_prog: bool = True,
+) -> tuple[NDArray[F64], NDArray[F64]]:
     ncirc = len(circuits)
     ncoils = len(coils)
     fr = np.zeros((ncirc, ncoils))  # [N/A^2]
     fz = np.zeros((ncirc, ncoils))
 
     # Calculate force per amp from each circuit `i` to each coil `j` using coil-coil force tables
-    items = _progressbar([x for x in range(ncirc)], "Circuit-coil force rows") if show_prog else range(ncirc)
+    items = (
+        _progressbar([x for x in range(ncirc)], "Circuit-coil force rows")
+        if show_prog
+        else range(ncirc)
+    )
     for i in items:
         for j, sign in circuits[i].coils:
             # For each coil in the circuit, add the signed force from that coil
@@ -56,7 +83,12 @@ def _calc_circuit_coil_forces(coils: list[Coil], circuits: list[CoilSeriesCircui
     return (fr, fz)
 
 
-def _calc_structure_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], NDArray[F64]], structure_flux_density_tables: tuple[NDArray[F64], NDArray[F64]], show_prog: bool = True) -> tuple[NDArray[F64], NDArray[F64]]:
+def _calc_structure_coil_forces(
+    coils: list[Coil],
+    grids: tuple[NDArray[F64], NDArray[F64]],
+    structure_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    show_prog: bool = True,
+) -> tuple[NDArray[F64], NDArray[F64]]:
     ncoils = len(coils)
     nstruct = structure_flux_density_tables[0].shape[0]
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
@@ -65,7 +97,11 @@ def _calc_structure_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], ND
     # Calculate force per amp from each coil `i` to each coil `j`
     # using the baked tables, which include the self-field solve patch
     # when it is available (for coils that fall on a regular grid)
-    items = _progressbar([x for x in range(nstruct)], "Structure-coil force rows") if show_prog else range(nstruct)
+    items = (
+        _progressbar([x for x in range(nstruct)], "Structure-coil force rows")
+        if show_prog
+        else range(nstruct)
+    )
     for i in items:
         br = structure_flux_density_tables[0][i, :, :]  # [T/A]
         bz = structure_flux_density_tables[1][i, :, :]
@@ -74,8 +110,120 @@ def _calc_structure_coil_forces(coils: list[Coil], grids: tuple[NDArray[F64], ND
         for j in range(ncoils):
             # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
             length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
-            obs = [coils[j].rs, coils[j].zs]  # [m] observation points (filament locations)
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
             fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
             fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
-    
+
     return (fr, fz)
+
+
+def _calc_structure_mode_coil_forces(
+    coils: list[Coil],
+    grids: tuple[NDArray[F64], NDArray[F64]],
+    structure_mode_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    show_prog: bool = True,
+) -> tuple[NDArray[F64], NDArray[F64]]:
+    ncoils = len(coils)
+    nmodes = structure_mode_flux_density_tables[0].shape[0]
+    fr = np.zeros((nmodes, ncoils))  # [N/A^2]
+    fz = np.zeros((nmodes, ncoils))
+
+    # Calculate force per amp from each coil `i` to each coil `j`
+    # using the baked tables, which include the self-field solve patch
+    # when it is available (for coils that fall on a regular grid)
+    items = (
+        _progressbar([x for x in range(nmodes)], "Structure mode-coil force rows")
+        if show_prog
+        else range(nmodes)
+    )
+    for i in items:
+        br = structure_mode_flux_density_tables[0][i, :, :]  # [T/A]
+        bz = structure_mode_flux_density_tables[1][i, :, :]
+        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
+        bz_interp = MulticubicRectilinear.new(grids, bz)
+        for j in range(ncoils):
+            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
+            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
+            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+
+    return (fr, fz)
+
+
+def _calc_plasma_coil_forces(
+    coils: list[Coil],
+    grids: tuple[NDArray[F64], NDArray[F64]],
+    meshes: tuple[NDArray[F64], NDArray[F64]],
+    plasma_flux_tables_or_limiter_mask: NDArray[F64],
+    full_flux_tables: bool = False,
+    show_prog: bool = True,
+) -> tuple[NDArray[F64], NDArray[F64]]:
+    ncoil = len(coils)
+    nr, nz = (len(grids[0]), len(grids[1]))
+    nrnz = nr * nz
+    rmesh, zmesh = meshes
+    fr = np.zeros((nrnz, ncoil))
+    fz = np.zeros((nrnz, ncoil))
+
+    if full_flux_tables:
+        # We're using the full tables
+        plasma_flux_tables = plasma_flux_tables_or_limiter_mask
+        items = (
+            _progressbar(
+                [x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr
+            )
+            if show_prog
+            else range(nrnz)
+        )
+        for i in items:
+            br, bz = calc_flux_density_from_flux(
+                plasma_flux_tables[i, :, :], *meshes
+            )  # [T/A]
+            br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
+            bz_interp = MulticubicRectilinear.new(grids, bz)
+
+            for j in range(ncoil):
+                # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+                length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+                obs = [
+                    coils[j].rs,
+                    coils[j].zs,
+                ]  # [m] observation points (filament locations)
+                fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
+                fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+    else:
+        # We're using the limiter mask, so we can calculate contributions directly,
+        # visiting only the points on the interior of the limiter and leaving the others as zeroes
+        limiter_mask = plasma_flux_tables_or_limiter_mask.flatten()
+        items = (
+            _progressbar(
+                [x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr
+            )
+            if show_prog
+            else range(nrnz)
+        )
+        current = np.atleast_1d(np.ones(1))
+        for i in items:
+            if limiter_mask[i]:
+                for j in range(ncoil):
+                    length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+                    rprime, zprime = [
+                        coils[j].rs,
+                        coils[j].zs,
+                    ]  # [m] observation points (filament locations)
+                    rfil = np.atleast_1d(rmesh.flatten()[i])
+                    zfil = np.atleast_1d(zmesh.flatten()[i])
+                    brs, bzs = flux_density_circular_filament(
+                        current, rfil, zfil, rprime, zprime, par=False
+                    )  # [T/A], not enough points to benefit from parallel impl
+                    fr[i][j] = np.sum(length_factor * bzs)
+                    fz[i][j] = np.sum(-length_factor * brs)
+
+    return fr, fz

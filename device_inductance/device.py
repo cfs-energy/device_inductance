@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Callable
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, cache
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,7 +46,13 @@ from device_inductance.tables import (
     _calc_circuit_flux_tables,
     _calc_circuit_flux_density_tables,
 )
-from device_inductance.forces import _calc_coil_coil_forces, _calc_circuit_coil_forces, _calc_structure_coil_forces
+from device_inductance.forces import (
+    _calc_coil_coil_forces,
+    _calc_circuit_coil_forces,
+    _calc_structure_coil_forces,
+    _calc_structure_mode_coil_forces,
+    _calc_plasma_coil_forces,
+)
 from device_inductance.utils import (
     calc_flux_density_from_flux,
     flux_solver,
@@ -518,24 +524,53 @@ class DeviceInductance:
         )
 
     @cached_property
-    def structure_coil_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
+    def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components"""
-        return _calc_structure_coil_forces(self.coils, self.grids, self.structure_flux_density_tables, self.show_prog)
+        return _calc_structure_coil_forces(
+            self.coils, self.grids, self.structure_flux_density_tables, self.show_prog
+        )
 
     @cached_property
-    def structure_mode_coil_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
+    def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components"""
-        raise NotImplementedError
+        return _calc_structure_mode_coil_forces(
+            self.coils,
+            self.grids,
+            self.structure_mode_flux_density_tables,
+            self.show_prog,
+        )
 
-    @cached_property
-    def mesh_coil_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components"""
-        raise NotImplementedError
+    @cache  # Only two input options -> implicit max cache size of 2 entries
+    def plasma_coil_forces(
+        self, method: Literal["tables", "mask"] = "mask"
+    ) -> tuple[NDArray[F64], NDArray[F64]]:
+        """[N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components
 
-    @cached_property
-    def coil_mesh_force_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (ncoils X nr X nz), Coil-mesh force tables, r- and z- components"""
-        raise NotImplementedError
+        Args:
+            method: Whether to interpolate B-field on the fully-realized mesh tables,
+                    or do direct filament calculations from points inside the limiter mask.
+                    Defaults to "mask", which is faster and uses less memory, but is less general.
+
+        Returns:
+            fr, fz [N/A^2]
+        """
+        if method == "tables":
+            plasma_flux_tables_or_limiter_mask = self.plasma_flux_tables
+            full_flux_tables = True
+        elif method == "mask":
+            plasma_flux_tables_or_limiter_mask = self.limiter_mask
+            full_flux_tables = False
+        else:
+            raise ValueError("Unexpected calc method")
+
+        return _calc_plasma_coil_forces(
+            self.coils,
+            self.grids,
+            self.meshes,
+            plasma_flux_tables_or_limiter_mask,
+            full_flux_tables,
+            show_prog=self.show_prog,
+        )
 
     @cached_property
     def structure_filament_rz(self) -> list[tuple[float, float]]:
