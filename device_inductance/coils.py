@@ -18,6 +18,8 @@ from .utils import solve_flux_axisymmetric, calc_flux_density_from_flux
 
 from interpn import MulticubicRectilinear
 
+from device_inductance.logging import log
+
 
 @dataclass(frozen=True)
 class CoilFilament:
@@ -81,6 +83,7 @@ class Coil:
             z = unique_z[0]
             unique_z = [z - 1e-2, z, z + 1e-2]
         if len(unique_r) < 2 or len(unique_z) < 2:
+            log().error("Failed to expand coil grid dimensionality")
             return None
 
         # Check if the coordinates have regular spacing,
@@ -88,10 +91,16 @@ class Coil:
         drs = np.diff(unique_r)
         drmean = np.mean(drs)
         if np.any(np.abs(drs - drmean) / drmean > 1e-4):
+            log().warning(
+                f"Coil {self.name} filaments are not on a regular grid; skipping grid for smooth self-field"
+            )
             return None
         dzs = np.diff(unique_z)
         dzmean = np.mean(dzs)
         if np.any(np.abs(dzs - dzmean) / dzmean > 1e-4):
+            log().warning(
+                f"Coil {self.name} filaments are not on a regular grid; skipping grid for smooth self-field"
+            )
             return None
 
         # Extend grids by a few cells outside the winding pack
@@ -113,6 +122,7 @@ class Coil:
         # across more than one neighboring cell, but that is too much complexity
         # to implement proactively.
         if rgrid[0] < 0.0:
+            log().error(f"Coil {self.name} grid for smooth self-field crossed r=0")
             return None
 
         return (rgrid, zgrid)
@@ -202,17 +212,17 @@ class Coil:
         r = [f.r for f in self.filaments]
         z = [f.z for f in self.filaments]
         return min(r), max(r), min(z), max(z)
-    
+
     @cached_property
     def rs(self) -> NDArray:
         """[m] Filament r-coordinates"""
         return np.array([f.r for f in self.filaments])
-    
+
     @cached_property
     def zs(self) -> NDArray:
         """[m] Filament z-coordinates"""
         return np.array([f.z for f in self.filaments])
-    
+
     @cached_property
     def ns(self) -> NDArray:
         """[dimensionless] Filament number of turns"""

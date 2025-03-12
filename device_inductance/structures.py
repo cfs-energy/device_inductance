@@ -9,6 +9,7 @@ from omas import ODS
 from cfsem import self_inductance_lyle6
 from device_inductance.mesh import _mesh_region
 from device_inductance.utils import _progressbar
+from device_inductance.logging import log
 
 
 @dataclass(frozen=True)
@@ -88,8 +89,7 @@ def _extract_structures(
             if fil.resistance > 0.0:
                 passive_filaments.append(fil)
             else:
-                # TODO: logging instead
-                print("Skipped zero-resistance passive filament")
+                log().wanrning("Skipped zero-resistance passive filament")
 
     return passive_filaments
 

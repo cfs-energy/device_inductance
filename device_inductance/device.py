@@ -99,6 +99,7 @@ class DeviceInductance:
     def __init__(
         self,
         ods: ODS,
+        *,  # kwarg-only for optional config
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
         dxgrid: tuple[float, float] = (0.05, 0.05),

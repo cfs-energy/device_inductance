@@ -11,11 +11,34 @@ from device_inductance import model_reduction, contour, sensors
 from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.coils import Coil, CoilFilament
 from device_inductance.structures import PassiveStructureFilament
+from device_inductance.logging import log, logger_is_set_up, logger_setup_default
+
 
 def load_default_ods() -> ODS:
-    """Load an example ODS file in the format required by device_inductance."""
+    """
+    Load an example ODS file in the format required by device_inductance.
+
+    The example differs from real SPARC configurations in at least the following ways:
+      * Coil number of turns and resistances are obfuscated
+      * Actual magnetics sensors are replaced with mockup examples
+      * The example description may be arbitrarily out-of-date, as it is not updated regularly
+    """
+
+    if not logger_is_set_up():
+        logger_setup_default()
+
+    log().warning("""
+Loading example device description.
+The example differs from real SPARC configurations in at least the following ways:
+    * Coil number of turns and resistances are obfuscated
+    * Actual magnetics sensors are replaced with mockup examples
+    * The example description may be arbitrarily out-of-date, as it is not updated regularly
+                  """)
+
     # NOTE: This should be rewritten to use importlib once omas supports loading raw text
-    ods_filename = Path(__file__).parent / "../examples/OS_SPARC_Device_Description.json"
+    ods_filename = (
+        Path(__file__).parent / "../examples/OS_SPARC_Device_Description.json"
+    )
     with open(ods_filename) as f:
         ods = load_omas_json(f)
 
@@ -47,8 +70,10 @@ def load_default_ods() -> ODS:
 
     return ods
 
+
 def typical(
     ods: ODS,
+    *,  # kwarg-only for optional config
     extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
     dxgrid: tuple[float, float] = (0.0, 0.0),
     max_nmodes: int = 40,
