@@ -34,5 +34,9 @@ def test_coil_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
             fab_jxb_r, fab_jxb_y, fab_jxb_z  = body_force_density_circular_filament_cartesian(na, ra, za, obs=(rb, zero, zb), j=(zero, 2.0 * np.pi * rb * nb, zero))  # [N/A^2]
 
             assert sum(fab_jxb_y) == 0.0
-            assert fab_mat_r == approx(sum(fab_jxb_r), rel=2e-2, abs=3e-6)  # Very coarse mesh for testing makes some interp error
+            # We see a combination of interp error here, as well as some filamentization error
+            # for coil pairs that are very close together, because the BFD calc uses the filament B-field
+            # which suffers a bit in the near-field compared to the smooth self-field patch used in the
+            # tables
+            assert fab_mat_r == approx(sum(fab_jxb_r), rel=2e-2, abs=3e-6)
             assert fab_mat_z == approx(sum(fab_jxb_z), rel=2e-2, abs=3e-6)
