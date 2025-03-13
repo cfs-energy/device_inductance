@@ -4,8 +4,9 @@
 
 ### Added
 
-* Coil, circuit, conducting structure, and structure mode "force Green's" tables
-  * These tables describe the total R- and Z- force applied to a unit toroidal current filament at each location in the grid
+* Add force matrices describing force applied to coils by each
+  coil, circuit, conducting structure filament, conducting structure mode, and plasma mesh cell
+* Add logging
 
 ## 1.8.0 - 2025-02-12
 
