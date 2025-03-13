@@ -58,7 +58,8 @@ from device_inductance.utils import (
     _join_extents,
     _pad_extent,
 )
-from device_inductance import model_reduction, log, logger_is_set_up, logger_setup_default
+from device_inductance import model_reduction
+from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 
 F64 = np.float64
 

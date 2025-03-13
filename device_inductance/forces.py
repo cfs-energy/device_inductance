@@ -3,8 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from device_inductance import Coil
-from device_inductance.device import F64
+from device_inductance.coils import Coil
 from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 from device_inductance.logging import log
@@ -16,10 +15,10 @@ from interpn import MulticubicRectilinear
 
 def _calc_coil_coil_forces(
     coils: list[Coil],
-    grids: tuple[NDArray[F64], NDArray[F64]],
-    coil_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    grids: tuple[NDArray, NDArray],
+    coil_flux_density_tables: tuple[NDArray, NDArray],
     show_prog: bool = True,
-) -> tuple[NDArray[F64], NDArray[F64]]:
+) -> tuple[NDArray, NDArray]:
     ncoils = len(coils)
     fr = np.zeros((ncoils, ncoils))  # [N/A^2]
     fz = np.zeros((ncoils, ncoils))
@@ -58,9 +57,9 @@ def _calc_coil_coil_forces(
 def _calc_circuit_coil_forces(
     coils: list[Coil],
     circuits: list[CoilSeriesCircuit],
-    coil_coil_forces: tuple[NDArray[F64], NDArray[F64]],
+    coil_coil_forces: tuple[NDArray, NDArray],
     show_prog: bool = True,
-) -> tuple[NDArray[F64], NDArray[F64]]:
+) -> tuple[NDArray, NDArray]:
     ncirc = len(circuits)
     ncoils = len(coils)
     fr = np.zeros((ncirc, ncoils))  # [N/A^2]
@@ -85,10 +84,10 @@ def _calc_circuit_coil_forces(
 
 def _calc_structure_coil_forces(
     coils: list[Coil],
-    grids: tuple[NDArray[F64], NDArray[F64]],
-    structure_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    grids: tuple[NDArray, NDArray],
+    structure_flux_density_tables: tuple[NDArray, NDArray],
     show_prog: bool = True,
-) -> tuple[NDArray[F64], NDArray[F64]]:
+) -> tuple[NDArray, NDArray]:
     ncoils = len(coils)
     nstruct = structure_flux_density_tables[0].shape[0]
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
@@ -122,10 +121,10 @@ def _calc_structure_coil_forces(
 
 def _calc_structure_mode_coil_forces(
     coils: list[Coil],
-    grids: tuple[NDArray[F64], NDArray[F64]],
-    structure_mode_flux_density_tables: tuple[NDArray[F64], NDArray[F64]],
+    grids: tuple[NDArray, NDArray],
+    structure_mode_flux_density_tables: tuple[NDArray, NDArray],
     show_prog: bool = True,
-) -> tuple[NDArray[F64], NDArray[F64]]:
+) -> tuple[NDArray, NDArray]:
     ncoils = len(coils)
     nmodes = structure_mode_flux_density_tables[0].shape[0]
     fr = np.zeros((nmodes, ncoils))  # [N/A^2]
@@ -159,12 +158,12 @@ def _calc_structure_mode_coil_forces(
 
 def _calc_plasma_coil_forces(
     coils: list[Coil],
-    grids: tuple[NDArray[F64], NDArray[F64]],
-    meshes: tuple[NDArray[F64], NDArray[F64]],
-    plasma_flux_tables_or_limiter_mask: NDArray[F64],
+    grids: tuple[NDArray, NDArray],
+    meshes: tuple[NDArray, NDArray],
+    plasma_flux_tables_or_limiter_mask: NDArray,
     full_flux_tables: bool = False,
     show_prog: bool = True,
-) -> tuple[NDArray[F64], NDArray[F64]]:
+) -> tuple[NDArray, NDArray]:
     ncoil = len(coils)
     nr, nz = (len(grids[0]), len(grids[1]))
     nrnz = nr * nz
