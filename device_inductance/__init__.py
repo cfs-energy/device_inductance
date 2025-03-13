@@ -75,7 +75,6 @@ def typical(
     ods: ODS,
     extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
     dxgrid: tuple[float, float] = (0.0, 0.0),
-    *,  # kwarg-only for optional config
     max_nmodes: int = 40,
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,

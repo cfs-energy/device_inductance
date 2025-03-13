@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Callable
 from dataclasses import dataclass
-from functools import cached_property, cache
+from functools import cached_property
 
 import numpy as np
 from numpy.typing import NDArray
@@ -94,11 +94,15 @@ class DeviceInductance:
     """Choice of method for truncating passive structure system modes"""
     _show_prog: bool = False
     """Whether to display terminal progress bars during expensive calculations"""
+    _plasma_coil_force_method: Literal["tables", "mask"] = "mask"
+    """Whether to interpolate B-field on the fully-realized mesh tables,
+    or do direct filament calculations from points inside the limiter mask.
+    Defaults to "mask", which is faster and uses less memory, but only includes
+    nonzero entries inside the limiter, which requires a valid limiter geometry."""
 
     def __init__(
         self,
         ods: ODS,
-        *,  # kwarg-only for optional config
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
         dxgrid: tuple[float, float] = (0.05, 0.05),
@@ -106,6 +110,7 @@ class DeviceInductance:
             "eigenmode", "stabilized eigenmode"
         ] = "eigenmode",
         show_prog: bool = False,
+        plasma_coil_force_method: Literal["tables", "mask"] = "mask",
         **kwargs,  # For backwards compatibility with `extent` kwarg only
     ):
         """
@@ -119,6 +124,10 @@ class DeviceInductance:
                     may be adjusted to satisfy the required spatial resolution.
             dxgrid: [m] spatial resolution of computational grid
             show_prog: Whether to display terminal progress bars during expensive calculations
+            plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
+                                      or do direct filament calculations from points inside the limiter mask.
+                                      Defaults to "mask", which is faster and uses less memory, but only includes
+                                      nonzero entries inside the limiter, which requires a valid limiter geometry.
         """
         if not logger_is_set_up():
             logger_setup_default()
@@ -126,7 +135,7 @@ class DeviceInductance:
         if "extent" in kwargs.keys():
             # Backwards compatibility with `extent` kwarg name only
             min_extent = kwargs.pop("extent")
-        
+
         if len(kwargs) != 0:
             log().warning(f"DeviceInductance init ignoring extra kwargs: {kwargs}")
 
@@ -136,6 +145,7 @@ class DeviceInductance:
         self._dxgrid = dxgrid
         self._model_reduction_method = model_reduction_method
         self._show_prog = show_prog
+        self._plasma_coil_force_method = plasma_coil_force_method
 
         self.__post_init__()
 
@@ -543,24 +553,13 @@ class DeviceInductance:
             self.show_prog,
         )
 
-    @cache  # Only two input options -> implicit max cache size of 2 entries
-    def plasma_coil_forces(
-        self, method: Literal["tables", "mask"] = "mask"
-    ) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components
-
-        Args:
-            method: Whether to interpolate B-field on the fully-realized mesh tables,
-                    or do direct filament calculations from points inside the limiter mask.
-                    Defaults to "mask", which is faster and uses less memory, but is less general.
-
-        Returns:
-            fr, fz [N/A^2]
-        """
-        if method == "tables":
+    @cached_property
+    def plasma_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """[N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components"""
+        if self._plasma_coil_force_method == "tables":
             plasma_flux_tables_or_limiter_mask = self.plasma_flux_tables
             full_flux_tables = True
-        elif method == "mask":
+        elif self._plasma_coil_force_method == "mask":
             plasma_flux_tables_or_limiter_mask = self.limiter_mask
             full_flux_tables = False
         else:
