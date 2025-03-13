@@ -7,8 +7,6 @@ from functools import cached_property, cache
 import numpy as np
 from numpy.typing import NDArray
 
-from device_inductance.logging import logger_is_set_up, logger_setup_default
-
 from cfsem import (
     self_inductance_distributed_axisymmetric_conductor,
 )
@@ -60,7 +58,7 @@ from device_inductance.utils import (
     _join_extents,
     _pad_extent,
 )
-from device_inductance import model_reduction
+from device_inductance import model_reduction, log, logger_is_set_up, logger_setup_default
 
 F64 = np.float64
 
@@ -121,12 +119,15 @@ class DeviceInductance:
             dxgrid: [m] spatial resolution of computational grid
             show_prog: Whether to display terminal progress bars during expensive calculations
         """
-        if "extent" in kwargs.keys():
-            # Backwards compatibility with `extent` kwarg name only
-            min_extent = kwargs["extent"]
-
         if not logger_is_set_up():
             logger_setup_default()
+
+        if "extent" in kwargs.keys():
+            # Backwards compatibility with `extent` kwarg name only
+            min_extent = kwargs.pop("extent")
+        
+        if len(kwargs) != 0:
+            log().warning(f"DeviceInductance init ignoring extra kwargs: {kwargs}")
 
         self._ods = ods
         self._max_nmodes = max_nmodes
