@@ -4,7 +4,8 @@ import device_inductance
 
 from pytest import approx
 
-from cfsem import body_force_density_circular_filament_cartesian
+from interpn import MulticubicRectilinear
+
 from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
 
 __all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode"]
@@ -17,26 +18,34 @@ def test_coil_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
     device = typical_outputs.device
     coils = device.coils
 
+    coil_flux_density_tables = device.coil_flux_density_tables
+    grids = device.grids
+
     for i in range(len(coils)):
         for j in range(len(coils)):
             if i == j:
                 continue
 
-            coila = coils[i]
-            coilb = coils[j]
+            fab_mat_r, fab_mat_z = (
+                device.coil_coil_forces[0][i, j],
+                device.coil_coil_forces[1][i, j],
+            )  # [N/A^2]
 
-            fab_mat_r, fab_mat_z = device.coil_coil_forces[0][i, j], device.coil_coil_forces[1][i, j]  # [N/A^2]
-            
-            ra, za, na = coila.rs, coila.zs, coila.ns
-            rb, zb, nb = coilb.rs, coilb.zs, coilb.ns
-            zero = np.zeros_like(rb)
-            # Replacing J with I*dL gives body force instead of body force density
-            fab_jxb_r, fab_jxb_y, fab_jxb_z  = body_force_density_circular_filament_cartesian(na, ra, za, obs=(rb, zero, zb), j=(zero, 2.0 * np.pi * rb * nb, zero))  # [N/A^2]
+            br = coil_flux_density_tables[0][i, :, :]  # [T/A]
+            bz = coil_flux_density_tables[1][i, :, :]
+            br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
+            bz_interp = MulticubicRectilinear.new(grids, bz)
 
-            assert sum(fab_jxb_y) == 0.0
-            # We see a combination of interp error here, as well as some filamentization error
-            # for coil pairs that are very close together, because the BFD calc uses the filament B-field
-            # which suffers a bit in the near-field compared to the smooth self-field patch used in the
-            # tables
-            assert fab_mat_r == approx(sum(fab_jxb_r), rel=2e-2, abs=3e-6)
-            assert fab_mat_z == approx(sum(fab_jxb_z), rel=2e-2, abs=3e-6)
+            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
+            fr_interped = np.sum(length_factor * bz_interp.eval(obs))
+            fz_interped = np.sum(-length_factor * br_interp.eval(obs))
+
+            # We see a bit of interpolation error here due to the coarse grid
+            # for coils that border on each other
+            assert fab_mat_r == approx(fr_interped, rel=2e-2, abs=3e-6)
+            assert fab_mat_z == approx(fz_interped, rel=2e-2, abs=3e-6)

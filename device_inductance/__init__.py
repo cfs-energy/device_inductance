@@ -78,6 +78,7 @@ def typical(
     max_nmodes: int = 40,
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
+    plasma_coil_force_method: Literal["tables", "mask"] = "mask",
 ) -> TypicalOutputs:
     """
     Generate a typical set of outputs,
@@ -94,6 +95,10 @@ def typical(
         dxgrid: [m] Spatial resolution of computational grid
         max_nmodes: Maximum number of structure modes to keep. Defaults to 40.
         show_prog: Whether to show terminal progress bars. Defaults to True.
+        plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
+                                  or do direct filament calculations from points inside the limiter mask.
+                                  Defaults to "mask", which is faster and uses less memory, but only includes
+                                  nonzero entries inside the limiter, which requires a valid limiter geometry.
 
     Returns:
         A fully-computed set of matrices and tables covering the needs of a typical workflow
@@ -105,6 +110,7 @@ def typical(
         dxgrid=dxgrid,
         model_reduction_method=model_reduction_method,
         show_prog=show_prog,
+        plasma_coil_force_method=plasma_coil_force_method,
     )
 
     out = TypicalOutputs(

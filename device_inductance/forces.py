@@ -8,7 +8,7 @@ from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 from device_inductance.logging import log
 
-from cfsem import flux_density_circular_filament
+from cfsem import flux_density_circular_filament, body_force_density_circular_filament_cartesian
 
 from interpn import MulticubicRectilinear
 
@@ -38,18 +38,40 @@ def _calc_coil_coil_forces(
         bz_interp = MulticubicRectilinear.new(grids, bz)
         for j in range(ncoils):
             if i == j and coils[i].local_fields is None:
+                # If we can't make a sane self-field estimate, skip and issue a warning
                 log().warning(
                     f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation"
                 )
                 continue
-            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
-            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
-            obs = [
-                coils[j].rs,
-                coils[j].zs,
-            ]  # [m] observation points (filament locations)
-            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+            elif i == j:
+                # If we're doing self-field and we have a local field solve, interpolate on the
+                # smooth local field to resolve the singularity issue
+
+                # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+                length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+                obs = [
+                    coils[j].rs,
+                    coils[j].zs,
+                ]  # [m] observation points (filament locations)
+                fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
+                fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+            else:
+                # If these are two separate coils, we can use a full IxB calc
+                # which is slower but more accurate than interpolation
+
+                coila = coils[i]
+                coilb = coils[j]
+
+                ra, za, na = coila.rs, coila.zs, coila.ns
+                rb, zb, nb = coilb.rs, coilb.zs, coilb.ns
+                zero = np.zeros_like(rb)
+                # Replacing J with I*dL gives body force instead of body force density
+                # and we can use the full circular length to scale the I*dL product in the toroidal direction
+                fab_jxb_r, fab_jxb_y, fab_jxb_z  = body_force_density_circular_filament_cartesian(na, ra, za, obs=(rb, zero, zb), j=(zero, 2.0 * np.pi * rb * nb, zero))  # [N/A^2]
+                assert sum(fab_jxb_y) == 0.0  # Sanity check
+                # Sum contributions at each filament
+                fr[i][j] = sum(fab_jxb_r)
+                fz[i][j] = sum(fab_jxb_z)
 
     return (fr, fz)
 
