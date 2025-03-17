@@ -539,9 +539,7 @@ class DeviceInductance:
     @cached_property
     def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components"""
-        return _calc_structure_coil_forces(
-            self.coils, self.grids, self.structure_flux_density_tables, self.show_prog
-        )
+        return _calc_structure_coil_forces(self.coils, self.structures, self.show_prog)
 
     @cached_property
     def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:

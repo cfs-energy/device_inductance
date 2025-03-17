@@ -95,26 +95,51 @@ def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs
     structures = device.structures
 
     ncoil = len(coils)
-    nstruct = len(structures)
 
-    sr, sz = zip(*device.structure_filament_rz)
-    sr = np.array(sr)
-    sz = np.array(sz)
+    fr, fz = device.structure_coil_forces
 
-    # There are a lot of structures, so to keep the tests reasonably fast,
-    # just check the total force from all the structure filaments to each coil
-    for i in range(ncoil):
+    # Calculate by alternative method (interpolating on field tables)
+    fr_alt, fz_alt = _calc_structure_coil_forces(coils, device.grids, device.structure_flux_density_tables, show_prog=False)
 
-        r = coils[i].rs
-        z = coils[i].zs
-        n = coils[i].ns
-        length_factor = 2.0 * np.pi * r * n
+    # The interpolation method is not very good for some coils that are very closely coupled to structures,
+    # so this comparison is best done in bulk across the whole population of filaments
+    # and with a wide tolerance
+    assert np.allclose(np.sum(fr, axis=0), np.sum(fr_alt, axis=0), rtol=0.2, atol=1e-6)
+    assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=1e-6)
 
-        sum_fr_mat = sum(device.structure_coil_forces[0][:, i])
-        sum_fz_mat = sum(device.structure_coil_forces[1][:, i])
 
-        zero = np.zeros_like(r)
-        fr, _, fz = body_force_density_circular_filament_cartesian(np.ones_like(sr), sr, sz, obs=(r, zero, z), j=(zero, length_factor, zero), par=False)
+def _calc_structure_coil_forces(
+    coils,
+    grids,
+    structure_flux_density_tables,
+    show_prog: bool = True,
+):
+    ncoils = len(coils)
+    nstruct = structure_flux_density_tables[0].shape[0]
+    fr = np.zeros((nstruct, ncoils))  # [N/A^2]
+    fz = np.zeros((nstruct, ncoils))
 
-        assert sum_fr_mat == approx(sum(fr), rel=0.1, abs=1e-5)
-        assert sum_fz_mat == approx(sum(fz), rel=0.1, abs=1e-5)
+    # Calculate force per amp from each coil `i` to each coil `j`
+    # using the baked tables, which include the self-field solve patch
+    # when it is available (for coils that fall on a regular grid)
+    # items = (
+    #     _progressbar([x for x in range(nstruct)], "Structure-coil force rows")
+    #     if show_prog
+    #     else range(nstruct)
+    # )
+    for i in range(nstruct):
+        br = structure_flux_density_tables[0][i, :, :]  # [T/A]
+        bz = structure_flux_density_tables[1][i, :, :]
+        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
+        bz_interp = MulticubicRectilinear.new(grids, bz)
+        for j in range(ncoils):
+            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
+            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
+            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+
+    return (fr, fz)

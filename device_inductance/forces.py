@@ -4,11 +4,15 @@ import numpy as np
 from numpy.typing import NDArray
 
 from device_inductance.coils import Coil
+from device_inductance.structures import PassiveStructureFilament
 from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 from device_inductance.logging import log
 
-from cfsem import flux_density_circular_filament, body_force_density_circular_filament_cartesian
+from cfsem import (
+    flux_density_circular_filament,
+    body_force_density_circular_filament_cartesian,
+)
 
 from interpn import MulticubicRectilinear
 
@@ -67,7 +71,15 @@ def _calc_coil_coil_forces(
                 zero = np.zeros_like(rb)
                 # Replacing J with I*dL gives body force instead of body force density
                 # and we can use the full circular length to scale the I*dL product in the toroidal direction
-                fab_jxb_r, fab_jxb_y, fab_jxb_z  = body_force_density_circular_filament_cartesian(na, ra, za, obs=(rb, zero, zb), j=(zero, 2.0 * np.pi * rb * nb, zero))  # [N/A^2]
+                fab_jxb_r, fab_jxb_y, fab_jxb_z = (
+                    body_force_density_circular_filament_cartesian(
+                        na,
+                        ra,
+                        za,
+                        obs=(rb, zero, zb),
+                        j=(zero, 2.0 * np.pi * rb * nb, zero),
+                    )
+                )  # [N/A^2]
                 assert sum(fab_jxb_y) == 0.0  # Sanity check
                 # Sum contributions at each filament
                 fr[i][j] = sum(fab_jxb_r)
@@ -106,37 +118,38 @@ def _calc_circuit_coil_forces(
 
 def _calc_structure_coil_forces(
     coils: list[Coil],
-    grids: tuple[NDArray, NDArray],
-    structure_flux_density_tables: tuple[NDArray, NDArray],
+    structures: list[PassiveStructureFilament],
     show_prog: bool = True,
 ) -> tuple[NDArray, NDArray]:
     ncoils = len(coils)
-    nstruct = structure_flux_density_tables[0].shape[0]
+    nstruct = len(structures)
+
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
     fz = np.zeros((nstruct, ncoils))
 
-    # Calculate force per amp from each coil `i` to each coil `j`
-    # using the baked tables, which include the self-field solve patch
-    # when it is available (for coils that fall on a regular grid)
     items = (
         _progressbar([x for x in range(nstruct)], "Structure-coil force rows")
         if show_prog
         else range(nstruct)
     )
     for i in items:
-        br = structure_flux_density_tables[0][i, :, :]  # [T/A]
-        bz = structure_flux_density_tables[1][i, :, :]
-        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
-        bz_interp = MulticubicRectilinear.new(grids, bz)
+        sr = np.atleast_1d(structures[i].r)
+        sz = np.atleast_1d(structures[i].z)
+        si = np.ones_like(sr)
         for j in range(ncoils):
-            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
-            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
-            obs = [
-                coils[j].rs,
-                coils[j].zs,
-            ]  # [m] observation points (filament locations)
-            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+            r = coils[j].rs
+            z = coils[j].zs
+            n = coils[j].ns
+            length_factor = 2.0 * np.pi * r * n
+            zero = np.zeros_like(r)
+
+            # Replacing J with I*dL gives body force instead of body force density
+            # and we can use the full circular length to scale the I*dL product in the toroidal direction
+            frij, _, fzij = body_force_density_circular_filament_cartesian(
+                si, sr, sz, obs=(r, zero, z), j=(zero, length_factor, zero), par=False
+            )
+            fr[i, j] = sum(frij)
+            fz[i, j] = sum(fzij)
 
     return (fr, fz)
 
