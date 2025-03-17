@@ -49,3 +49,40 @@ def test_coil_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
             # for coils that border on each other
             assert fab_mat_r == approx(fr_interped, rel=2e-2, abs=3e-6)
             assert fab_mat_z == approx(fz_interped, rel=2e-2, abs=3e-6)
+
+
+def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
+    device = typical_outputs.device
+    coils = device.coils
+    circuits = device.circuits
+    grids = device.grids
+
+    fr, fz = device.circuit_coil_forces
+    br, bz = device.circuit_flux_density_tables
+
+    ncoil = len(coils)
+    ncirc = len(circuits)
+
+    for i in range(ncirc):
+        br_interp = MulticubicRectilinear.new(grids, br[i, :, :])  # [T/A] vs. [m]
+        bz_interp = MulticubicRectilinear.new(grids, bz[i, :, :])
+
+        circuit_coil_names = [coils[k].name for k, _ in circuits[i].coils]
+        any_coils_no_self_field = any([coils[k].grids is None for k, _ in circuits[i].coils])
+
+        for j in range(ncoil):
+            r = coils[j].rs
+            z = coils[j].zs
+            n = coils[j].ns
+            length_factor = 2.0 * np.pi * r * n
+            fr_interped = sum(length_factor * bz_interp.eval([r, z]))
+            fz_interped = sum(-length_factor * br_interp.eval([r, z]))
+            
+            if coils[j].name in circuit_coil_names and any_coils_no_self_field:
+                # If this circuit-coil combination includes self-field for a coil that does not
+                # have a smooth self-field calc available, then this calc will not match the test method
+                pass
+            else:
+                # print(i, j, circuits[i].name, coils[j].name, f"{fr[i,j]:e},{fr_interped:e}", f"{fz[i,j]:e},{fz_interped:e}")
+                assert fr[i, j] == approx(fr_interped, rel=6e-2, abs=6e-6)
+                assert fz[i, j] == approx(fz_interped, rel=6e-2, abs=6e-6)
