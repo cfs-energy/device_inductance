@@ -6,6 +6,8 @@ from pytest import approx
 
 from interpn import MulticubicRectilinear
 
+from cfsem import body_force_density_circular_filament_cartesian
+
 from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
 
 __all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode"]
@@ -86,3 +88,33 @@ def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
                 # print(i, j, circuits[i].name, coils[j].name, f"{fr[i,j]:e},{fr_interped:e}", f"{fz[i,j]:e},{fz_interped:e}")
                 assert fr[i, j] == approx(fr_interped, rel=6e-2, abs=6e-6)
                 assert fz[i, j] == approx(fz_interped, rel=6e-2, abs=6e-6)
+
+def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
+    device = typical_outputs.device
+    coils = device.coils
+    structures = device.structures
+
+    ncoil = len(coils)
+    nstruct = len(structures)
+
+    sr, sz = zip(*device.structure_filament_rz)
+    sr = np.array(sr)
+    sz = np.array(sz)
+
+    # There are a lot of structures, so to keep the tests reasonably fast,
+    # just check the total force from all the structure filaments to each coil
+    for i in range(ncoil):
+
+        r = coils[i].rs
+        z = coils[i].zs
+        n = coils[i].ns
+        length_factor = 2.0 * np.pi * r * n
+
+        sum_fr_mat = sum(device.structure_coil_forces[0][:, i])
+        sum_fz_mat = sum(device.structure_coil_forces[1][:, i])
+
+        zero = np.zeros_like(r)
+        fr, _, fz = body_force_density_circular_filament_cartesian(np.ones_like(sr), sr, sz, obs=(r, zero, z), j=(zero, length_factor, zero), par=False)
+
+        assert sum_fr_mat == approx(sum(fr), rel=0.1, abs=1e-5)
+        assert sum_fz_mat == approx(sum(fz), rel=0.1, abs=1e-5)
