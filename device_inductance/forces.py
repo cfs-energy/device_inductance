@@ -153,44 +153,6 @@ def _calc_structure_coil_forces(
 
     return (fr, fz)
 
-
-def _calc_structure_mode_coil_forces(
-    coils: list[Coil],
-    grids: tuple[NDArray, NDArray],
-    structure_mode_flux_density_tables: tuple[NDArray, NDArray],
-    show_prog: bool = True,
-) -> tuple[NDArray, NDArray]:
-    ncoils = len(coils)
-    nmodes = structure_mode_flux_density_tables[0].shape[0]
-    fr = np.zeros((nmodes, ncoils))  # [N/A^2]
-    fz = np.zeros((nmodes, ncoils))
-
-    # Calculate force per amp from each coil `i` to each coil `j`
-    # using the baked tables, which include the self-field solve patch
-    # when it is available (for coils that fall on a regular grid)
-    items = (
-        _progressbar([x for x in range(nmodes)], "Structure mode-coil force rows")
-        if show_prog
-        else range(nmodes)
-    )
-    for i in items:
-        br = structure_mode_flux_density_tables[0][i, :, :]  # [T/A]
-        bz = structure_mode_flux_density_tables[1][i, :, :]
-        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
-        bz_interp = MulticubicRectilinear.new(grids, bz)
-        for j in range(ncoils):
-            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
-            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
-            obs = [
-                coils[j].rs,
-                coils[j].zs,
-            ]  # [m] observation points (filament locations)
-            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
-
-    return (fr, fz)
-
-
 def _calc_plasma_coil_forces(
     coils: list[Coil],
     grids: tuple[NDArray, NDArray],

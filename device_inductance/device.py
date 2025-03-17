@@ -48,7 +48,6 @@ from device_inductance.forces import (
     _calc_coil_coil_forces,
     _calc_circuit_coil_forces,
     _calc_structure_coil_forces,
-    _calc_structure_mode_coil_forces,
     _calc_plasma_coil_forces,
 )
 from device_inductance.utils import (
@@ -544,12 +543,11 @@ class DeviceInductance:
     @cached_property
     def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components"""
-        return _calc_structure_mode_coil_forces(
-            self.coils,
-            self.grids,
-            self.structure_mode_flux_density_tables,
-            self.show_prog,
-        )
+        tuv = self.structure_model_reduction
+        frsc, fzsc = self.structure_coil_forces
+        fr = tuv.T @ frsc
+        fz = tuv.T @ fzsc
+        return (fr, fz)
 
     @cached_property
     def plasma_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:

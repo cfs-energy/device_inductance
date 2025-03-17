@@ -70,7 +70,9 @@ def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
         bz_interp = MulticubicRectilinear.new(grids, bz[i, :, :])
 
         circuit_coil_names = [coils[k].name for k, _ in circuits[i].coils]
-        any_coils_no_self_field = any([coils[k].grids is None for k, _ in circuits[i].coils])
+        any_coils_no_self_field = any(
+            [coils[k].grids is None for k, _ in circuits[i].coils]
+        )
 
         for j in range(ncoil):
             r = coils[j].rs
@@ -79,7 +81,7 @@ def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
             length_factor = 2.0 * np.pi * r * n
             fr_interped = sum(length_factor * bz_interp.eval([r, z]))
             fz_interped = sum(-length_factor * br_interp.eval([r, z]))
-            
+
             if coils[j].name in circuit_coil_names and any_coils_no_self_field:
                 # If this circuit-coil combination includes self-field for a coil that does not
                 # have a smooth self-field calc available, then this calc will not match the test method
@@ -89,17 +91,17 @@ def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
                 assert fr[i, j] == approx(fr_interped, rel=6e-2, abs=6e-6)
                 assert fz[i, j] == approx(fz_interped, rel=6e-2, abs=6e-6)
 
+
 def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
     device = typical_outputs.device
     coils = device.coils
-    structures = device.structures
-
-    ncoil = len(coils)
 
     fr, fz = device.structure_coil_forces
 
     # Calculate by alternative method (interpolating on field tables)
-    fr_alt, fz_alt = _calc_structure_coil_forces(coils, device.grids, device.structure_flux_density_tables, show_prog=False)
+    fr_alt, fz_alt = _calc_structure_coil_forces(
+        coils, device.grids, device.structure_flux_density_tables
+    )
 
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
@@ -108,28 +110,59 @@ def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs
     assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=1e-6)
 
 
-def _calc_structure_coil_forces(
-    coils,
-    grids,
-    structure_flux_density_tables,
-    show_prog: bool = True,
-):
+def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
+    device = typical_outputs.device
+    
+    fr, fz = device.structure_mode_coil_forces
+
+    # Calculate by alternative method (interpolating on field tables)
+    fr_alt, fz_alt = _calc_structure_mode_coil_forces(device.coils, device.grids, device.structure_mode_flux_density_tables, show_prog=False)
+
+    # The interpolation method is not very good for some coils that are very closely coupled to structures,
+    # so this comparison is best done in bulk across the whole population of filaments
+    # and with a wide tolerance
+    assert np.allclose(np.sum(fr, axis=0), np.sum(fr_alt, axis=0), rtol=0.2, atol=1e-6)
+    assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=1e-6)
+
+
+def _calc_structure_coil_forces(coils, grids, structure_flux_density_tables):
     ncoils = len(coils)
     nstruct = structure_flux_density_tables[0].shape[0]
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
     fz = np.zeros((nstruct, ncoils))
 
-    # Calculate force per amp from each coil `i` to each coil `j`
-    # using the baked tables, which include the self-field solve patch
-    # when it is available (for coils that fall on a regular grid)
-    # items = (
-    #     _progressbar([x for x in range(nstruct)], "Structure-coil force rows")
-    #     if show_prog
-    #     else range(nstruct)
-    # )
     for i in range(nstruct):
         br = structure_flux_density_tables[0][i, :, :]  # [T/A]
         bz = structure_flux_density_tables[1][i, :, :]
+        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
+        bz_interp = MulticubicRectilinear.new(grids, bz)
+        for j in range(ncoils):
+            # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)
+            length_factor = 2.0 * np.pi * coils[j].rs * coils[j].ns  # [m]-turns
+            obs = [
+                coils[j].rs,
+                coils[j].zs,
+            ]  # [m] observation points (filament locations)
+            fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
+            fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+
+    return (fr, fz)
+
+
+def _calc_structure_mode_coil_forces(
+    coils,
+    grids,
+    structure_mode_flux_density_tables,
+    show_prog: bool = True,
+):
+    ncoils = len(coils)
+    nmodes = structure_mode_flux_density_tables[0].shape[0]
+    fr = np.zeros((nmodes, ncoils))  # [N/A^2]
+    fz = np.zeros((nmodes, ncoils))
+
+    for i in range(nmodes):
+        br = structure_mode_flux_density_tables[0][i, :, :]  # [T/A]
+        bz = structure_mode_flux_density_tables[1][i, :, :]
         br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
         bz_interp = MulticubicRectilinear.new(grids, bz)
         for j in range(ncoils):
