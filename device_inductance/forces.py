@@ -37,9 +37,7 @@ def _calc_coil_coil_forces(
         else range(ncoils)
     )
     for i in items:
-        br = coil_flux_density_tables[0][i, :, :]  # [T/A]
         bz = coil_flux_density_tables[1][i, :, :]
-        br_interp = MulticubicRectilinear.new(gridlist, br)  # [T/A] vs. [m]
         bz_interp = MulticubicRectilinear.new(gridlist, bz)
         for j in range(ncoils):
             if i == j and coils[i].local_fields is None:
