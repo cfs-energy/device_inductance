@@ -59,7 +59,7 @@ def _calc_coil_coil_forces(
                     coils[j].zs,
                 ]  # [m] observation points (filament locations)
                 fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-                fz[i][j] = np.sum(-length_factor * br_interp.eval(obs))
+                fz[i][j] = 0.0  # No self-propulsion; interpolation would produce slightly nonzero value
             else:
                 # If these are two separate coils, we can use a full IxB calc
                 # which is slower but more accurate than interpolation
