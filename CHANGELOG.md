@@ -1,11 +1,14 @@
 # Changelog
 
-## 1.9.0 - 2025-03-10
+## 1.9.0 - 2025-03-19
 
 ### Added
 
 * Add force matrices describing force applied to coils by each
   coil, circuit, conducting structure filament, conducting structure mode, and plasma mesh cell
+  * Two options for plasma-coil forces, one that requires the full plasma flux tables and produces
+    a matrix covering the full domain, and another that does a direct calculation from only the points
+    inside the limiter.
 * Add logging
 
 ## 1.8.0 - 2025-02-12
