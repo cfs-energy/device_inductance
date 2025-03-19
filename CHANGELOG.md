@@ -10,7 +10,6 @@
     a matrix covering the full domain, and another that does a direct calculation from only the points
     inside the limiter.
 * Add logging
-* Add support for python 3.13
 
 ## 1.8.0 - 2025-02-12
 
