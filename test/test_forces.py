@@ -6,7 +6,6 @@ from pytest import approx
 
 from interpn import MulticubicRectilinear
 
-from cfsem import body_force_density_circular_filament_cartesian
 
 from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
 
