@@ -125,6 +125,24 @@ def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOu
     assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=1e-6)
 
 
+def test_plasma_coil_force(typical_outputs: device_inductance.TypicalOutputs, typical_outputs_stabilized_eigenmode: device_inductance.TypicalOutputs):
+    device_interpolating = typical_outputs.device
+    device_masked_direct = typical_outputs_stabilized_eigenmode.device
+    limiter_mask = device_masked_direct.limiter_mask
+    mask_inds = np.where(limiter_mask.flatten())
+
+    # Make sure that the nonzero entries common between both methods match reasonably well
+    fr_interped = device_interpolating.plasma_coil_forces[0][mask_inds, :]
+    fz_interped = device_interpolating.plasma_coil_forces[1][mask_inds, :]
+
+    fr_masked = device_masked_direct.plasma_coil_forces[0][mask_inds, :]
+    fz_masked = device_masked_direct.plasma_coil_forces[1][mask_inds, :]
+
+    assert np.allclose(fr_interped, fr_masked, rtol=2e-2, atol=1e-6)
+    assert np.allclose(fz_interped, fz_masked, rtol=2e-2, atol=1e-6)
+
+
+
 def _calc_structure_coil_forces(coils, grids, structure_flux_density_tables):
     ncoils = len(coils)
     nstruct = structure_flux_density_tables[0].shape[0]
