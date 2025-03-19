@@ -26,6 +26,7 @@ def _calc_coil_coil_forces(
     ncoils = len(coils)
     fr = np.zeros((ncoils, ncoils))  # [N/A^2]
     fz = np.zeros((ncoils, ncoils))
+    gridlist = [x for x in grids]
 
     # Calculate force per amp from each coil `i` to each coil `j`
     # using the baked tables, which include the self-field solve patch
@@ -38,8 +39,8 @@ def _calc_coil_coil_forces(
     for i in items:
         br = coil_flux_density_tables[0][i, :, :]  # [T/A]
         bz = coil_flux_density_tables[1][i, :, :]
-        br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
-        bz_interp = MulticubicRectilinear.new(grids, bz)
+        br_interp = MulticubicRectilinear.new(gridlist, br)  # [T/A] vs. [m]
+        bz_interp = MulticubicRectilinear.new(gridlist, bz)
         for j in range(ncoils):
             if i == j and coils[i].local_fields is None:
                 # If we can't make a sane self-field estimate, skip and issue a warning
@@ -167,6 +168,7 @@ def _calc_plasma_coil_forces(
     rmesh, zmesh = meshes
     fr = np.zeros((nrnz, ncoil))
     fz = np.zeros((nrnz, ncoil))
+    gridlist = [x for x in grids]
 
     if full_flux_tables:
         # We're using the full tables
@@ -182,8 +184,8 @@ def _calc_plasma_coil_forces(
             br, bz = calc_flux_density_from_flux(
                 plasma_flux_tables[i, :, :], *meshes
             )  # [T/A]
-            br_interp = MulticubicRectilinear.new(grids, br)  # [T/A] vs. [m]
-            bz_interp = MulticubicRectilinear.new(grids, bz)
+            br_interp = MulticubicRectilinear.new(gridlist, br)  # [T/A] vs. [m]
+            bz_interp = MulticubicRectilinear.new(gridlist, bz)
 
             for j in range(ncoil):
                 # Integral of I*cross(dL,B)/I with dL in +phi direction = 2*pi*r * nturns * (Bz, 0.0, -Br)

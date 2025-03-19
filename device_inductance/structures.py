@@ -89,7 +89,7 @@ def _extract_structures(
             if fil.resistance > 0.0:
                 passive_filaments.append(fil)
             else:
-                log().wanrning("Skipped zero-resistance passive filament")
+                log().warning("Skipped zero-resistance passive filament")
 
     return passive_filaments
 

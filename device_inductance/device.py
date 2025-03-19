@@ -283,7 +283,7 @@ class DeviceInductance:
             rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
 
             # Update the extent, which may have been adjusted
-            extent = (min(rgrid), max(rgrid), min(zgrid), max(zgrid))
+            extent = (float(np.min(rgrid)), float(np.max(rgrid)), float(np.min(zgrid)), float(np.max(zgrid)))
         else:
             # If our grid spec is zero-size, make a unit mesh
             # to allow the calcs to proceed, without providing real tables
