@@ -85,6 +85,17 @@ def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
                 # If this circuit-coil combination includes self-field for a coil that does not
                 # have a smooth self-field calc available, then this calc will not match the test method
                 pass
+            elif coils[j].name in circuit_coil_names:
+                # Self-field with smooth field available
+
+                # print(i, j, circuits[i].name, coils[j].name, f"{fr[i,j]:e},{fr_interped:e}", f"{fz[i,j]:e},{fz_interped:e}")
+                assert fr[i, j] == approx(fr_interped, rel=6e-2, abs=6e-6)
+
+                # In single-coil circuits, only self-field is present, and z-force should be near zero
+                # This also holds for circuits where the coils are aligned vertically.
+                # All the coils in the device description fall into one of these categories as of
+                # 2025-03-20, but this may need an update someday if other kinds of configurations are added.
+                assert fz[i, j] == approx(0.0, abs=1e-6)
             else:
                 # print(i, j, circuits[i].name, coils[j].name, f"{fr[i,j]:e},{fr_interped:e}", f"{fz[i,j]:e},{fz_interped:e}")
                 assert fr[i, j] == approx(fr_interped, rel=6e-2, abs=6e-6)
