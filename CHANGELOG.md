@@ -9,9 +9,12 @@
   * Two options for plasma-coil forces, one that requires the full plasma flux tables and produces
     a matrix covering the full domain, and another that does a direct calculation from only the points
     inside the limiter.
-* Update gmsh settings for passive structure meshing to be more deterministic
 * Add logging
 * Add support for python 3.13
+
+### Changed
+
+* Update gmsh settings for passive structure meshing to be more deterministic
 
 ## 1.8.0 - 2025-02-12
 
