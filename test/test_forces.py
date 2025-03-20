@@ -52,6 +52,47 @@ def test_coil_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
             assert fab_mat_z == approx(fz_interped, rel=2e-2, abs=3e-6)
 
 
+def test_coil_coil_z_force_against_femm(typical_outputs: device_inductance.TypicalOutputs):
+    """
+    Make sure the magnitude and direction of Z-axis force between two coils
+    roughly matches the result from a FEMM axisymmetric finite element model.
+    See `femm_coil_test.[FEM,ans]` for FEMM problem setup and results.
+    """
+    device = typical_outputs.device
+
+    coila_index = device.coil_index_dict["DV1U"]
+    coilb_index = device.coil_index_dict["DV2U"]
+
+    coila = device.coils[coila_index]
+    coilb = device.coils[coilb_index]
+
+    #
+    # Leave this here for extracting the envelope to update the tests
+    #
+
+    # def coil_envelope(c: device_inductance.Coil) -> tuple[float, float, float, float]:
+    #     """Coil extent only includes the filaments; this expanded extent is the input that would
+    #     produce this filamentization"""
+    #     rgrid, zgrid = c.grids
+    #     dr, dz = np.diff(rgrid)[0], np.diff(zgrid)[0]
+    #     rmin, rmax, zmin, zmax = c.extent
+    #     return (rmin - dr/2, rmax + dr/2, zmin - dz/2, zmax + dz/2)
+    
+    # envelope_a = coil_envelope(coila)
+    # envelope_b = coil_envelope(coilb)
+
+    # print(envelope_a, envelope_b)
+
+    # raise ValueError
+
+    fzab = device.coil_coil_forces[1][coila_index, coilb_index]  # [N/A^2] * 1A * 1A -> [N]
+    # Solved result from a FEMM model that approximately matches the coil envelope with a uniform current density
+    fzab_expected = np.sum(coila.ns) * np.sum(coilb.ns) * 1.41356e-5  # [N] at 1A in each coil
+    # Expect a bit of error due to FEA discretization, slight differences in envelope geometry,
+    # and incomplete joint turns being distributed over the top row of filaments in device_description
+    assert fzab == approx(fzab_expected, rel=0.1)
+
+
 def test_circuit_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
     device = typical_outputs.device
     coils = device.coils
