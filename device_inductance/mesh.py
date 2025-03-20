@@ -67,6 +67,11 @@ def _mesh_region(
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", min_length)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", max_length)
 
+    # Set up for nearly-deterministic meshing
+    gmsh.option.setNumber("Mesh.RandomSeed", 12394871234)
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-9)
+    gmsh.option.setNumber("Mesh.RandomFactor3D", 1e-9)
+
     if mesh_mode == MeshMode.Triangular:
         gmsh.option.setNumber("Mesh.Algorithm", 8)
     elif mesh_mode == MeshMode.QuasiStructuredQuad:
