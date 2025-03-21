@@ -523,26 +523,78 @@ class DeviceInductance:
 
     @cached_property
     def coil_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (ncoils X ncoils), Coil-coil force tables, r- and z- components"""
+        """
+        [N/A^2] with shape (ncoils X ncoils), Coil-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
         return _calc_coil_coil_forces(
             self.coils, self.grids, self.coil_flux_density_tables, self.show_prog
         )
 
     @cached_property
     def circuit_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (ncirc X ncoils), Circuit-coil force tables, r- and z- components"""
+        """
+        [N/A^2] with shape (ncirc X ncoils), Circuit-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
         return _calc_circuit_coil_forces(
             self.coils, self.circuits, self.coil_coil_forces, self.show_prog
         )
 
     @cached_property
     def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components"""
+        """
+        [N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
         return _calc_structure_coil_forces(self.coils, self.structures, self.show_prog)
 
     @cached_property
     def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components"""
+        """
+        [N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
         tuv = self.structure_model_reduction
         frsc, fzsc = self.structure_coil_forces
         fr = tuv.T @ frsc
@@ -551,7 +603,20 @@ class DeviceInductance:
 
     @cached_property
     def plasma_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components"""
+        """
+        [N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
         if self._plasma_coil_force_method == "tables":
             plasma_flux_tables_or_limiter_mask = self.plasma_flux_tables
             full_flux_tables = True
