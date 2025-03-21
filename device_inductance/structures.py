@@ -92,7 +92,7 @@ def _extract_structures(
                 log().warning("Skipped zero-resistance passive filament")
 
     # Sort filaments to improve conditioning of model reduction
-    passive_filaments = sorted(passive_filaments, key=lambda x: -x.self_inductance)
+    passive_filaments = sorted(passive_filaments, key=lambda x: -x.self_inductance / x.resistance)
 
     return passive_filaments
 

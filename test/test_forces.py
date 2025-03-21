@@ -171,10 +171,11 @@ def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOu
     # Calculate by alternative method (interpolating on field tables)
     fr_alt, fz_alt = _calc_structure_mode_coil_forces(device.coils, device.grids, device.structure_mode_flux_density_tables, show_prog=False)
 
-    # Remove VS coil rows because their cover is too close-coupled for this test to work well -
+    # Remove VS and DV coil rows because their nearby structure is too close-coupled for this test to work well -
     # the interpolated method becomes very sensitive to how close the structures happen to be
-    # to the nearest grid cell
-    vs_names = [x for x in device.coil_names if "VS" in x]
+    # to the nearest grid cell and produce intermittent test failures despite configuring gmsh to minimize
+    # randomization of mesh outputs
+    vs_names = [x for x in device.coil_names if "VS" in x or "DV" in x]
     vs_inds = [device.coil_index_dict[x] for x in vs_names]
     frc[:, vs_inds] = 0.0
     fzc[:, vs_inds] = 0.0
