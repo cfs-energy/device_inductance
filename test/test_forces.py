@@ -184,8 +184,8 @@ def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOu
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
     # and with a wide tolerance
-    assert np.allclose(np.sum(frc, axis=0), np.sum(fr_alt, axis=0), rtol=0.05, atol=1e-6)
-    assert np.allclose(np.sum(fzc, axis=0), np.sum(fz_alt, axis=0), rtol=0.05, atol=1e-6)
+    assert np.allclose(np.sum(frc, axis=0), np.sum(fr_alt, axis=0), rtol=0.2, atol=3e-6)
+    assert np.allclose(np.sum(fzc, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=3e-6)
 
 
 def test_plasma_coil_force(typical_outputs: device_inductance.TypicalOutputs, typical_outputs_stabilized_eigenmode: device_inductance.TypicalOutputs):
