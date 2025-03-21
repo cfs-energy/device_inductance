@@ -15,6 +15,8 @@
 ### Changed
 
 * Update gmsh settings for passive structure meshing to be more deterministic
+  * Reduce randomization factor, fix random seed, and use single thread so that RNGs do not get out of sync between threads
+* Sort structure filaments by descending self-inductance to improve conditioning of model reduction
 
 ## 1.8.0 - 2025-02-12
 

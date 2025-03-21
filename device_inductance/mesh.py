@@ -72,8 +72,8 @@ def _mesh_region(
     #  Note this random factor is smaller than recommended, but
     #  larger values result in behavior so non-repeatable that it causes
     #  frequent unit test failures
-    gmsh.option.setNumber("Mesh.RandomFactor", 1e-18)
-    gmsh.option.setNumber("Mesh.RandomFactor3D", 1e-18)
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-60)
+    gmsh.option.setNumber("Mesh.RandomFactor3D", 1e-60)
     gmsh.option.setNumber('General.NumThreads', 1)
 
     if mesh_mode == MeshMode.Triangular:
