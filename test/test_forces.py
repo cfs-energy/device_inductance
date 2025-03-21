@@ -165,15 +165,27 @@ def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOu
     device = typical_outputs.device
     
     fr, fz = device.structure_mode_coil_forces
+    frc = fr.copy()  # Copy to mutate safely
+    fzc = fz.copy()
 
     # Calculate by alternative method (interpolating on field tables)
     fr_alt, fz_alt = _calc_structure_mode_coil_forces(device.coils, device.grids, device.structure_mode_flux_density_tables, show_prog=False)
 
+    # Remove VS coil rows because their cover is too close-coupled for this test to work well -
+    # the interpolated method becomes very sensitive to how close the structures happen to be
+    # to the nearest grid cell
+    vs_names = [x for x in device.coil_names if "VS" in x]
+    vs_inds = [device.coil_index_dict[x] for x in vs_names]
+    frc[:, vs_inds] = 0.0
+    fzc[:, vs_inds] = 0.0
+    fr_alt[:, vs_inds] = 0.0
+    fz_alt[:, vs_inds] = 0.0
+
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
     # and with a wide tolerance
-    assert np.allclose(np.sum(fr, axis=0), np.sum(fr_alt, axis=0), rtol=0.2, atol=3e-6)
-    assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=3e-6)
+    assert np.allclose(np.sum(frc, axis=0), np.sum(fr_alt, axis=0), rtol=0.05, atol=1e-6)
+    assert np.allclose(np.sum(fzc, axis=0), np.sum(fz_alt, axis=0), rtol=0.05, atol=1e-6)
 
 
 def test_plasma_coil_force(typical_outputs: device_inductance.TypicalOutputs, typical_outputs_stabilized_eigenmode: device_inductance.TypicalOutputs):
