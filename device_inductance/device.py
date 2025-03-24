@@ -44,6 +44,12 @@ from device_inductance.tables import (
     _calc_circuit_flux_tables,
     _calc_circuit_flux_density_tables,
 )
+from device_inductance.forces import (
+    _calc_coil_coil_forces,
+    _calc_circuit_coil_forces,
+    _calc_structure_coil_forces,
+    _calc_plasma_coil_forces,
+)
 from device_inductance.utils import (
     calc_flux_density_from_flux,
     flux_solver,
@@ -52,6 +58,7 @@ from device_inductance.utils import (
     _pad_extent,
 )
 from device_inductance import model_reduction
+from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 
 F64 = np.float64
 
@@ -86,6 +93,11 @@ class DeviceInductance:
     """Choice of method for truncating passive structure system modes"""
     _show_prog: bool = False
     """Whether to display terminal progress bars during expensive calculations"""
+    _plasma_coil_force_method: Literal["tables", "mask"] = "mask"
+    """Whether to interpolate B-field on the fully-realized mesh tables,
+    or do direct filament calculations from points inside the limiter mask.
+    Defaults to "mask", which is faster and uses less memory, but only includes
+    nonzero entries inside the limiter, which requires a valid limiter geometry."""
 
     def __init__(
         self,
@@ -97,6 +109,7 @@ class DeviceInductance:
             "eigenmode", "stabilized eigenmode"
         ] = "eigenmode",
         show_prog: bool = False,
+        plasma_coil_force_method: Literal["tables", "mask"] = "mask",
         **kwargs,  # For backwards compatibility with `extent` kwarg only
     ):
         """
@@ -110,10 +123,20 @@ class DeviceInductance:
                     may be adjusted to satisfy the required spatial resolution.
             dxgrid: [m] spatial resolution of computational grid
             show_prog: Whether to display terminal progress bars during expensive calculations
+            plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
+                                      or do direct filament calculations from points inside the limiter mask.
+                                      Defaults to "mask", which is faster and uses less memory, but only includes
+                                      nonzero entries inside the limiter, which requires a valid limiter geometry.
         """
+        if not logger_is_set_up():
+            logger_setup_default()
+
         if "extent" in kwargs.keys():
             # Backwards compatibility with `extent` kwarg name only
-            min_extent = kwargs["extent"]
+            min_extent = kwargs.pop("extent")
+
+        if len(kwargs) != 0:
+            log().warning(f"DeviceInductance init ignoring extra kwargs: {kwargs}")
 
         self._ods = ods
         self._max_nmodes = max_nmodes
@@ -121,6 +144,7 @@ class DeviceInductance:
         self._dxgrid = dxgrid
         self._model_reduction_method = model_reduction_method
         self._show_prog = show_prog
+        self._plasma_coil_force_method = plasma_coil_force_method
 
         self.__post_init__()
 
@@ -259,7 +283,7 @@ class DeviceInductance:
             rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
 
             # Update the extent, which may have been adjusted
-            extent = (min(rgrid), max(rgrid), min(zgrid), max(zgrid))
+            extent = (float(np.min(rgrid)), float(np.max(rgrid)), float(np.min(zgrid)), float(np.max(zgrid)))
         else:
             # If our grid spec is zero-size, make a unit mesh
             # to allow the calcs to proceed, without providing real tables
@@ -495,6 +519,120 @@ class DeviceInductance:
             self.circuits,
             *self.coil_flux_density_tables,
             self.show_prog,
+        )
+
+    @cached_property
+    def coil_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """
+        [N/A^2] with shape (ncoils X ncoils), Coil-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
+        return _calc_coil_coil_forces(
+            self.coils, self.grids, self.coil_flux_density_tables, self.show_prog
+        )
+
+    @cached_property
+    def circuit_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """
+        [N/A^2] with shape (ncirc X ncoils), Circuit-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
+        return _calc_circuit_coil_forces(
+            self.coils, self.circuits, self.coil_coil_forces, self.show_prog
+        )
+
+    @cached_property
+    def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """
+        [N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
+        return _calc_structure_coil_forces(self.coils, self.structures, self.show_prog)
+
+    @cached_property
+    def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """
+        [N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
+        tuv = self.structure_model_reduction
+        frsc, fzsc = self.structure_coil_forces
+        fr = tuv.T @ frsc
+        fz = tuv.T @ fzsc
+        return (fr, fz)
+
+    @cached_property
+    def plasma_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
+        """
+        [N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components.
+        
+        Note that analytic force estimates include a variety of sources of error, including
+        geometric differences between analysis and real hardware, discretization error,
+        numerical summation error, and so on. Due to the importance of loads analysis, it
+        is always recommended to double-check force results with at least one other tool,
+        preferably of meaningfully distinct design - for example, cross-check an analytic method
+        with a finite-element method.
+
+        Because the accuracy of force estimates depends heavily on problem setup and geometry,
+        no particular claims are made here about the accuracy of the force calculations,
+        and they should never be used for human safety applications.
+        """
+        if self._plasma_coil_force_method == "tables":
+            plasma_flux_tables_or_limiter_mask = self.plasma_flux_tables
+            full_flux_tables = True
+        elif self._plasma_coil_force_method == "mask":
+            plasma_flux_tables_or_limiter_mask = self.limiter_mask
+            full_flux_tables = False
+        else:
+            raise ValueError("Unexpected calc method")
+
+        return _calc_plasma_coil_forces(
+            self.coils,
+            self.grids,
+            self.meshes,
+            plasma_flux_tables_or_limiter_mask,
+            full_flux_tables,
+            show_prog=self.show_prog,
         )
 
     @cached_property

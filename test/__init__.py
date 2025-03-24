@@ -25,6 +25,7 @@ def typical_outputs() -> device_inductance.TypicalOutputs:
 
 @pytest.fixture(scope="session")
 def typical_outputs_stabilized_eigenmode() -> device_inductance.TypicalOutputs:
+    """With alternate options for model reduction method and plasma-coil force method"""
     # Because the device is immutable after init, we have to make a whole new one
     # to get the other model reduction method
 
@@ -46,6 +47,7 @@ def typical_outputs_stabilized_eigenmode() -> device_inductance.TypicalOutputs:
         max_nmodes=40,
         show_prog=False,
         model_reduction_method="stabilized eigenmode",
+        plasma_coil_force_method="tables"
     )
 
     return typical_outputs

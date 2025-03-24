@@ -67,11 +67,20 @@ def _mesh_region(
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", min_length)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", max_length)
 
+    # Set up for nearly-deterministic meshing
+    gmsh.option.setNumber("Mesh.RandomSeed", 12394871234)
+    #  Note this random factor is smaller than recommended, but
+    #  larger values result in behavior so non-repeatable that it causes
+    #  frequent unit test failures
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-60)
+    gmsh.option.setNumber("Mesh.RandomFactor3D", 1e-60)
+    gmsh.option.setNumber('General.NumThreads', 1)
+
     if mesh_mode == MeshMode.Triangular:
         gmsh.option.setNumber("Mesh.Algorithm", 8)
     elif mesh_mode == MeshMode.QuasiStructuredQuad:
         # we don't want to be left with any triangles! (see gmsh tutorial 11)
-        gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
+        gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 0)
         gmsh.option.setNumber("Mesh.RecombineAll", 1)
         gmsh.option.setNumber("Mesh.Algorithm", 11)
         gmsh.option.setNumber("Mesh.QuadqsSizemapMethod", 0)

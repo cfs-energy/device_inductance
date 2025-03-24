@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.9.0 - 2025-03-19
+
+### Added
+
+* Add force matrices describing force applied to coils by each
+  coil, circuit, conducting structure filament, conducting structure mode, and plasma mesh cell
+  * Two options for plasma-coil forces, one that requires the full plasma flux tables and produces
+    a matrix covering the full domain, and another that does a direct calculation from only the points
+    inside the limiter.
+* Add logging
+* Add support for python 3.13
+
+### Changed
+
+* Update gmsh settings for passive structure meshing to be more deterministic
+  * Reduce randomization factor, fix random seed, and use single thread so that RNGs do not get out of sync between threads
+* Sort structure filaments by descending L/R timescale to improve conditioning of model reduction
+
 ## 1.8.0 - 2025-02-12
 
 ### Added

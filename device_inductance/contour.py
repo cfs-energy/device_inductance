@@ -13,6 +13,8 @@ from numpy.typing import NDArray
 from interpn import MulticubicRectilinear, MultilinearRectilinear
 from scipy.optimize import minimize
 
+from device_inductance.logging import log
+
 
 def trace_contour(
     grids: tuple[NDArray, NDArray],
@@ -117,7 +119,7 @@ def trace_contour(
         # so failure to converge can be taken to mean that the
         # contour we're looking for isn't here.
         if not sol.success:
-            print("Contour local solve did not converge")
+            log().error("Contour local solve did not converge")
             return None
 
         # Take a step along the psi=constant contour
@@ -148,10 +150,10 @@ def trace_contour(
         # its adjustment toward the psi=psi0 contour
         mask_val = mask_interp_point(r[i], z[i])
         if mask_val < 0.5:
-            print("Contour crossed limiter")
+            log().error("Contour crossed limiter")
             return None
 
     # We didn't make a full revolution or end up outside the limiter
     # It's possible there was a closed contour to find, but we didn't find it
-    print("Contour exceeded maximum length without making a full revolution")
+    log().error("Contour exceeded maximum length without making a full revolution")
     return None
