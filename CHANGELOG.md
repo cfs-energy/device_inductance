@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.1 - 2025-03-27
+
+### Fixed
+
+* Fix bug in assembly of circuit mutual inductance matrix which caused only half the inductance terms of each circuit to be accounted
+
+### Added
+
+* Add more rigorous test of circuit mutual inductance matrix using flux interpolator method
+
 ## 1.9.0 - 2025-03-19
 
 ### Added

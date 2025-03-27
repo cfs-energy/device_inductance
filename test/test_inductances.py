@@ -19,10 +19,51 @@ from scipy.constants import mu_0
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import factorized
 
+from interpn import MulticubicRectilinear
+
 from . import typical_outputs  # Required fixture
 
 __all__ = ["typical_outputs"]
 
+
+def test_circuit_inductances(typical_outputs: device_inductance.TypicalOutputs):
+    device = typical_outputs.device
+
+    circuits = device.circuits
+    coils = device.coils
+
+    ncirc = len(circuits)
+
+    m_interped = np.zeros((ncirc, ncirc))
+
+    for i in range(ncirc):
+        # Get a flux interpolator for this circuit
+        psii = device.circuit_flux_tables[i]
+        circi_psi_interp = MulticubicRectilinear.new([x for x in device.grids], psii.flatten())
+        for j in range(ncirc):
+            circj = circuits[j]
+
+            if m_interped[i, j] != 0.0:
+                # don't double up
+                continue
+            
+            # Interpolate the flux from circuit `i` to all the filaments in each coil of
+            # circuit `j`, applying their sign and number of turns in the process.
+            #
+            # Note this works fine for self-field because we're doing a smooth G-S patch
+            # over each coil, so the flux field doesn't have any singularities in it
+            # except possibly for the coils with windings that do not fall on a rectangular grid.
+            for (p, sign) in circj.coils:
+                coilp = coils[p]
+                rs, zs, ns = coilp.rs, coilp.zs, coilp.ns
+                m_interped[i, j] += np.sum(sign * ns * circi_psi_interp.eval([rs, zs]))
+            
+            m_interped[j, i] = m_interped[i, j]
+
+    # Compare interpolated inductance to direct calc from tables
+    m = device.circuit_mutual_inductances
+
+    assert np.allclose(m, m_interped, rtol=5e-3, atol=1e-6)
 
 def test_coil_inductances(typical_outputs: device_inductance.TypicalOutputs):
     """
