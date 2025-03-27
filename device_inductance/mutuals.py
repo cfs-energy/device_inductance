@@ -137,7 +137,8 @@ def _calc_circuit_mutual_inductances(
         for j, circj in enumerate(circuits):
             # This procedure works for both self- and mutual- terms
             jcoilinds = [c[0] for c in circj.coils]
-            m[i, j] = np.sum(mcc_signed[icoilinds, jcoilinds])
+            ijcoilinds = [x for x in product(icoilinds, jcoilinds)]
+            m[i, j] = np.sum([mcc_signed[p, q] for p, q in ijcoilinds])
             m[j, i] = m[i, j]
 
     return m  # [H]
