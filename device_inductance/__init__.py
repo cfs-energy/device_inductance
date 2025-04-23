@@ -10,7 +10,7 @@ from omas import ODS, load_omas_json
 from device_inductance import model_reduction, contour, sensors
 from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.coils import Coil, CoilFilament
-from device_inductance.structures import PassiveStructureFilament
+from device_inductance.structures import PassiveStructureLoop
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 
 
@@ -141,9 +141,10 @@ __all__ = [
     "typical",
     "Coil",
     "CoilFilament",
-    "PassiveStructureFilament",
+    "PassiveStructureLoop",
     "model_reduction",
     "load_default_ods",
     "contour",
     "sensors",
+    "mesh"
 ]

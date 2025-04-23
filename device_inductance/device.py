@@ -98,7 +98,7 @@ class DeviceInductance:
     or do direct filament calculations from points inside the limiter mask.
     Defaults to "mask", which is faster and uses less memory, but only includes
     nonzero entries inside the limiter, which requires a valid limiter geometry."""
-    _n_radial_slices: int = 12
+    _n_radial_slices: int = 20
     """Number of radial slices to use for chunking large structures. Each slice is centered
     at the limiter centroid."""
 

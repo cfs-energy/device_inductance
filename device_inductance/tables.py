@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 from device_inductance.coils import Coil
 from device_inductance.circuits import CoilSeriesCircuit
-from device_inductance.structures import PassiveStructureFilament
+from device_inductance.structures import PassiveStructureLoop
 from device_inductance.utils import (
     _progressbar,
     calc_flux_density_from_flux,
@@ -135,7 +135,7 @@ def _calc_coil_flux_density_tables(
 
 
 def _calc_structure_flux_tables(
-    structures: list[PassiveStructureFilament],
+    structures: list[PassiveStructureLoop],
     meshes: tuple[NDArray, NDArray],
     show_prog: bool = True,
 ) -> NDArray:
@@ -152,12 +152,11 @@ def _calc_structure_flux_tables(
     show_every = max(1, npassive // 100)  # Don't spam too much
     if show_prog:
         items = _progressbar(items, "Structure flux tables", show_every)
-    for i, e in items:
+    for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        # Number of turns for passive filaments is always 1, so it is dropped here.
-        ifil = np.array([1.0])  # [A] unit reference current for normalization
-        rfil = np.array([e.r])  # [m]
-        zfil = np.array([e.z])  # [m]
+        ifil = s.ns  # [A] unit reference current for normalization times number of turns
+        rfil = s.rs  # [m]
+        zfil = s.zs  # [m]
         psi_mesh_structures[i, :, :] = flux_circular_filament(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
         ).reshape(shape)  # [Wb/A]
@@ -166,7 +165,7 @@ def _calc_structure_flux_tables(
 
 
 def _calc_structure_flux_density_tables(
-    structures: list[PassiveStructureFilament],
+    structures: list[PassiveStructureLoop],
     meshes: tuple[NDArray, NDArray],
     structure_flux_tables: NDArray,
     show_prog: bool = True,
@@ -187,30 +186,29 @@ def _calc_structure_flux_density_tables(
         items = _progressbar(
             items, "Structure flux density (B-field) tables", show_every
         )
-    for i, e in items:
+    for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        # Number of turns for passive filaments is always 1, so it is dropped here.
-        ifil = np.array([1.0])  # [A] unit reference current for normalization
-        rfil = np.array([e.r])  # [m]
-        zfil = np.array([e.z])  # [m]
+        ifil = s.ns  # [A] unit reference current for normalization times number of turns
+        rfil = s.rs  # [m]
+        zfil = s.zs  # [m]
         b = flux_density_circular_filament(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
         )  # [T/A]
         br_mesh_structures[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_structures[i, :, :] = b[1].reshape(shape)  # [T/A]
 
-        # Similar to the coils, we'll get better results very close to the
-        # filaments using a finite difference on the flux values.
-        # Another option would be to make a loop of linear segments and do biot-savart
-        #    Figure out what part we're replacing
-        dist = ((rmesh - rfil) ** 2 + (zmesh - zfil) ** 2) ** 0.5  # [m]
-        inds = np.where(dist < _MIN_DIST)
-        #    Do the replacement
-        br_from_psi, bz_from_psi = calc_flux_density_from_flux(
-            structure_flux_tables[i, :, :], rmesh, zmesh
-        )  # [T/A]
-        br_mesh_structures[i, :, :][inds] = br_from_psi[inds]  # [T/A]
-        bz_mesh_structures[i, :, :][inds] = bz_from_psi[inds]  # [T/A]
+        # # Similar to the coils, we'll get better results very close to the
+        # # filaments using a finite difference on the flux values.
+        # # Another option would be to make a loop of linear segments and do biot-savart
+        # #    Figure out what part we're replacing
+        # dist = ((rmesh - rfil) ** 2 + (zmesh - zfil) ** 2) ** 0.5  # [m]
+        # inds = np.where(dist < _MIN_DIST)
+        # #    Do the replacement
+        # br_from_psi, bz_from_psi = calc_flux_density_from_flux(
+        #     structure_flux_tables[i, :, :], rmesh, zmesh
+        # )  # [T/A]
+        # br_mesh_structures[i, :, :][inds] = br_from_psi[inds]  # [T/A]
+        # bz_mesh_structures[i, :, :][inds] = bz_from_psi[inds]  # [T/A]
 
     br_mesh_structures = np.ascontiguousarray(br_mesh_structures)  # [T/A]
     bz_mesh_structures = np.ascontiguousarray(bz_mesh_structures)  # [T/A]

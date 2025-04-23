@@ -10,10 +10,6 @@ from .slicer import RadialSlicer
 from .loop import PassiveStructureLoop
 
 
-MAX_EDGE_LENGTH_M = 0.1
-"""Default maximum length of an edge in the lowest-level discretization"""
-
-
 def _extract_structures(
     description: ODS,
     limiter: Polygon,
@@ -53,7 +49,7 @@ def _extract_structures(
     items = structure_inputs
     items = _progressbar(items, suffix="Structures discretized") if show_prog else items
     for inp in items:
-        structure_chunks.append(PassiveStructureLoop.from_element(*inp, slicer=slicer))
+        structure_chunks.append(PassiveStructureLoop.from_input(inp, slicer=slicer))
 
     # Flatten
     structure_loops: list[PassiveStructureLoop] = list(chain(*structure_chunks))

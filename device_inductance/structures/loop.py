@@ -1,3 +1,5 @@
+"""Top-level discretization of conducting structure."""
+
 from __future__ import annotations
 
 from functools import cached_property
@@ -10,11 +12,12 @@ import cfsem
 
 from shapely import Polygon
 import device_inductance
+from device_inductance import mesh
 
+from .input import PassiveStructureInput
 from .slicer import RadialSlicer
-from .heuristics import poly_angle, unroundness
-
-from . import MAX_EDGE_LENGTH_M
+from .heuristics import poly_angle, unroundness, MAX_EDGE_LENGTH_M
+from .filament import PassiveStructureFilament, _mesh_elem_to_fil
 
 
 @dataclass(frozen=True)
@@ -34,7 +37,7 @@ class PassiveStructureLoop:
     `n` loops, this represents a `1/n` fraction of a loop."""
 
     # Discretization results
-    filaments: list[device_inductance.PassiveStructureFilament]  # After meshing
+    filaments: list[PassiveStructureFilament]  # After meshing
 
     @cached_property
     def rs(self) -> NDArray:
@@ -48,8 +51,11 @@ class PassiveStructureLoop:
 
     @cached_property
     def ns(self) -> NDArray:
-        """[dimensionless] (Fractional) number of turns of each filament"""
-        return np.ones_like(self.rs) / float(len(self.rs))
+        """
+        [dimensionless] (Fractional) number of turns of each filament.
+        Includes accounting of self.frac_of_loop, which may be non-unity!
+        """
+        return self.frac_of_loop * np.ones_like(self.rs) / float(len(self.rs))
 
     @cached_property
     def resistance(self) -> float:
@@ -65,18 +71,15 @@ class PassiveStructureLoop:
         # Because the filaments within a chunk are assumed to be in parallel and isopotential on the section,
         # each one is accounted as only a fraction of a full turn - otherwise, the calculated inductance
         # would diverge as the discretization becomes finer.
-        nfils = len(self.rs)
-        fil_frac_of_loop = np.atleast_1d([1.0 / float(nfils)])
+        fil_frac_of_loop = self.ns
         ref_current = np.ones((1,))  # [A]
         self_inductance = 0.0  # [H]
         for i, f in enumerate(self.filaments):
             r = np.atleast_1d(f.r)
             z = np.atleast_1d(f.z)
-            mutuals = (fil_frac_of_loop**2) * cfsem.flux_circular_filament(
-                ref_current, r, z, self.rs, self.zs
-            )
+            mutuals = cfsem.flux_circular_filament(ref_current, r, z, self.rs, self.zs)
             mutuals[i] = (
-                fil_frac_of_loop[0] * f.self_inductance
+                fil_frac_of_loop[i] * f.self_inductance
             )  # Replace singularity with analytic estimate
             self_inductance += np.sum(mutuals)
 
@@ -84,7 +87,8 @@ class PassiveStructureLoop:
         # in which case it does not represent a full loop by itself.
         # Because the self inductance is really the mutual inductance from self to self,
         # the fraction of loop needs to be accounted twice.
-        self_inductance = (self.frac_of_loop**2) * float(self_inductance)
+        # This overall fraction of loop is accounted in `self.ns` and does not need to be repeated here.
+        self_inductance = float(self_inductance)
 
         return self_inductance  # [H]
 
@@ -99,14 +103,11 @@ class PassiveStructureLoop:
             # Self-inductance already has `self.frac_of_loop` accounted
             return self.self_inductance
 
+        # Each loop's `ns` includes accounting of both filament number of turns and overall number of turns
         rzn1 = np.array([self.rs, self.zs, self.ns])  # [m], [m], [dimensionless]
         rzn2 = np.array([other.rs, other.zs, other.ns])
 
-        m = (
-            self.frac_of_loop
-            * other.frac_of_loop
-            * cfsem.mutual_inductance_of_cylindrical_coils(rzn1, rzn2)
-        )  # [H]
+        m = cfsem.mutual_inductance_of_cylindrical_coils(rzn1, rzn2)
 
         return m  # [H]
 
@@ -125,13 +126,13 @@ class PassiveStructureLoop:
         fully discretized yet.
         """
         # Subdivide by meshing
-        sub_polygons: list[Polygon] = device_inductance.mesh._mesh_region(
+        sub_polygons: list[Polygon] = mesh._mesh_region(
             np.array(polygon.boundary.segmentize(max_edge_length_m).xy).T
         )
 
         # Make a filament from each mesh cell
         filaments = [
-            device_inductance.structures._mesh_elem_to_fil(p, resistivity, parent_name)
+            _mesh_elem_to_fil(p, resistivity, parent_name)
             for p in sub_polygons
         ]
 
@@ -148,9 +149,7 @@ class PassiveStructureLoop:
     @classmethod
     def from_input(
         cls,
-        parent_name: str,
-        polygon: Polygon,
-        resistivity: float,
+        inp: PassiveStructureInput,
         slicer: RadialSlicer,
         angle_thresh_deg: float = 20.0,
         unroundness_thresh: float = 2.0,
@@ -164,17 +163,17 @@ class PassiveStructureLoop:
         # If something spans a large region around the centroid
         # AND it's not a conceptually solid block of material,
         # subdivide it so that we get adequate detail about current in different regions.
-        angle_thresh_met = poly_angle(polygon, slicer.centroid) > np.deg2rad(
+        angle_thresh_met = poly_angle(inp.polygon, slicer.centroid) > np.deg2rad(
             angle_thresh_deg
         )
-        unroundness_thresh_met = unroundness(polygon) > unroundness_thresh
+        unroundness_thresh_met = unroundness(inp.polygon) > unroundness_thresh
 
         if angle_thresh_met and unroundness_thresh_met:
             # Slice into angular chunks
-            chunks: list[Polygon] = slicer.slice(polygon)
+            chunks: list[Polygon] = slicer.slice(inp.polygon)
         else:
             # If the original takes up a small angular region or it's a solid block, use it as-is
-            chunks: list[Polygon] = [polygon]
+            chunks: list[Polygon] = [inp.polygon]
 
         # Each chunk represents a fraction of one contiguous loop;
         # if we were to treat each chunk as a whole loop, the inductance of the system
@@ -182,5 +181,6 @@ class PassiveStructureLoop:
         frac_of_loop = 1.0 / float(len(chunks))  # [dimensionless]
 
         return [
-            cls.from_poly(parent_name, p, resistivity, frac_of_loop) for p in chunks
+            cls.from_poly(inp.parent_name, p, inp.resistivity, frac_of_loop)
+            for p in chunks
         ]

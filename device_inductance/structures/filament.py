@@ -1,10 +1,10 @@
+"""The lowest-level discretization of conducting structure."""
 
 from dataclasses import dataclass
 
 import numpy as np
 from shapely import Polygon, centroid
 from cfsem import self_inductance_lyle6
-
 
 
 @dataclass(frozen=True)

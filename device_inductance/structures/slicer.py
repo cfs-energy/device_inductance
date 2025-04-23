@@ -1,3 +1,4 @@
+"""Tool for cutting a polyogon into pie-slice chunks"""
 
 from itertools import product
 
