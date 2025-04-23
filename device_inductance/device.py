@@ -15,7 +15,7 @@ from omas import ODS
 
 from shapely import Polygon, Point
 
-from device_inductance.structures import PassiveStructureFilament, _extract_structures
+from device_inductance.structures import PassiveStructureLoop, _extract_structures
 from device_inductance.coils import Coil, _extract_coils
 from device_inductance.circuits import CoilSeriesCircuit, _extract_circuits
 from device_inductance.sensors import (
@@ -98,18 +98,23 @@ class DeviceInductance:
     or do direct filament calculations from points inside the limiter mask.
     Defaults to "mask", which is faster and uses less memory, but only includes
     nonzero entries inside the limiter, which requires a valid limiter geometry."""
+    _n_radial_slices: int = 12
+    """Number of radial slices to use for chunking large structures. Each slice is centered
+    at the limiter centroid."""
 
     def __init__(
         self,
         ods: ODS,
+        *,
+        show_prog: bool = False,
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
         dxgrid: tuple[float, float] = (0.05, 0.05),
         model_reduction_method: Literal[
             "eigenmode", "stabilized eigenmode"
         ] = "eigenmode",
-        show_prog: bool = False,
         plasma_coil_force_method: Literal["tables", "mask"] = "mask",
+        n_radial_slices: int = 12,
         **kwargs,  # For backwards compatibility with `extent` kwarg only
     ):
         """
@@ -117,16 +122,18 @@ class DeviceInductance:
 
         Args:
             ods: OMAS data object in the format produced by device_description
+            show_prog: Whether to display terminal progress bars during expensive calculations
             max_nmodes: Maximum number of structure modes to retain
             min_extent: [m] rmin, rmax, zmin, zmax extent of computational domain.
                     This will be updated during mesh initialization, during which it
                     may be adjusted to satisfy the required spatial resolution.
             dxgrid: [m] spatial resolution of computational grid
-            show_prog: Whether to display terminal progress bars during expensive calculations
             plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
                                       or do direct filament calculations from points inside the limiter mask.
                                       Defaults to "mask", which is faster and uses less memory, but only includes
                                       nonzero entries inside the limiter, which requires a valid limiter geometry.
+            n_radial_slices: Number of radial slices to use for chunking large structures. Each slice is centered
+                             at the limiter centroid.
         """
         if not logger_is_set_up():
             logger_setup_default()
@@ -220,9 +227,15 @@ class DeviceInductance:
         return _extract_coils(self.ods)
 
     @cached_property
-    def structures(self) -> list[PassiveStructureFilament]:
+    def structures(self) -> list[PassiveStructureLoop]:
         """Info about structure filaments"""
-        return _extract_structures(self.ods, self.show_prog)
+        return _extract_structures(
+            self.ods,
+            limiter=self.limiter,
+            n_slices=self._n_radial_slices,
+            extent=self.extent_for_plotting,
+            show_prog=self.show_prog,
+        )
 
     @cached_property
     def circuits(self) -> list[CoilSeriesCircuit]:
@@ -283,7 +296,12 @@ class DeviceInductance:
             rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
 
             # Update the extent, which may have been adjusted
-            extent = (float(np.min(rgrid)), float(np.max(rgrid)), float(np.min(zgrid)), float(np.max(zgrid)))
+            extent = (
+                float(np.min(rgrid)),
+                float(np.max(rgrid)),
+                float(np.min(zgrid)),
+                float(np.max(zgrid)),
+            )
         else:
             # If our grid spec is zero-size, make a unit mesh
             # to allow the calcs to proceed, without providing real tables
@@ -525,7 +543,7 @@ class DeviceInductance:
     def coil_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """
         [N/A^2] with shape (ncoils X ncoils), Coil-coil force tables, r- and z- components.
-        
+
         Note that analytic force estimates include a variety of sources of error, including
         geometric differences between analysis and real hardware, discretization error,
         numerical summation error, and so on. Due to the importance of loads analysis, it
@@ -545,7 +563,7 @@ class DeviceInductance:
     def circuit_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """
         [N/A^2] with shape (ncirc X ncoils), Circuit-coil force tables, r- and z- components.
-        
+
         Note that analytic force estimates include a variety of sources of error, including
         geometric differences between analysis and real hardware, discretization error,
         numerical summation error, and so on. Due to the importance of loads analysis, it
@@ -565,7 +583,7 @@ class DeviceInductance:
     def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """
         [N/A^2] with shape (nstruct X ncoils), Structure filament-coil force tables, r- and z- components.
-        
+
         Note that analytic force estimates include a variety of sources of error, including
         geometric differences between analysis and real hardware, discretization error,
         numerical summation error, and so on. Due to the importance of loads analysis, it
@@ -583,7 +601,7 @@ class DeviceInductance:
     def structure_mode_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """
         [N/A^2] with shape (nmodes X ncoils), Structure mode-coil force tables, r- and z- components.
-        
+
         Note that analytic force estimates include a variety of sources of error, including
         geometric differences between analysis and real hardware, discretization error,
         numerical summation error, and so on. Due to the importance of loads analysis, it
@@ -605,7 +623,7 @@ class DeviceInductance:
     def plasma_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """
         [N/A^2] with shape (nr*nz X ncoils), Mesh-coil force tables, r- and z- components.
-        
+
         Note that analytic force estimates include a variety of sources of error, including
         geometric differences between analysis and real hardware, discretization error,
         numerical summation error, and so on. Due to the importance of loads analysis, it
