@@ -154,7 +154,9 @@ def _calc_structure_flux_tables(
         items = _progressbar(items, "Structure flux tables", show_every)
     for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        ifil = s.ns  # [A] unit reference current for normalization times number of turns
+        ifil = (
+            s.ns
+        )  # [A] unit reference current for normalization times number of turns
         rfil = s.rs  # [m]
         zfil = s.zs  # [m]
         psi_mesh_structures[i, :, :] = flux_circular_filament(
@@ -188,7 +190,9 @@ def _calc_structure_flux_density_tables(
         )
     for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        ifil = s.ns  # [A] unit reference current for normalization times number of turns
+        ifil = (
+            s.ns
+        )  # [A] unit reference current for normalization times number of turns
         rfil = s.rs  # [m]
         zfil = s.zs  # [m]
         b = flux_density_circular_filament(
@@ -197,18 +201,22 @@ def _calc_structure_flux_density_tables(
         br_mesh_structures[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_structures[i, :, :] = b[1].reshape(shape)  # [T/A]
 
-        # # Similar to the coils, we'll get better results very close to the
-        # # filaments using a finite difference on the flux values.
-        # # Another option would be to make a loop of linear segments and do biot-savart
-        # #    Figure out what part we're replacing
-        # dist = ((rmesh - rfil) ** 2 + (zmesh - zfil) ** 2) ** 0.5  # [m]
-        # inds = np.where(dist < _MIN_DIST)
-        # #    Do the replacement
-        # br_from_psi, bz_from_psi = calc_flux_density_from_flux(
-        #     structure_flux_tables[i, :, :], rmesh, zmesh
-        # )  # [T/A]
-        # br_mesh_structures[i, :, :][inds] = br_from_psi[inds]  # [T/A]
-        # bz_mesh_structures[i, :, :][inds] = bz_from_psi[inds]  # [T/A]
+        # Similar to the coils, we'll get better results very close to the
+        # filaments using a finite difference on the flux values.
+        # Another option would be to make a loop of linear segments and do biot-savart
+
+        # Replacement table for this structure loop
+        br_from_psi, bz_from_psi = calc_flux_density_from_flux(
+            structure_flux_tables[i, :, :], rmesh, zmesh
+        )  # [T/A]
+
+        # Figure out what part we're replacing relative to each filament
+        for r, z in zip(rfil, zfil):
+            dist = ((rmesh - r) ** 2 + (zmesh - z) ** 2) ** 0.5  # [m]
+            inds = np.where(dist < _MIN_DIST)
+
+            br_mesh_structures[i, :, :][inds] = br_from_psi[inds]  # [T/A]
+            bz_mesh_structures[i, :, :][inds] = bz_from_psi[inds]  # [T/A]
 
     br_mesh_structures = np.ascontiguousarray(br_mesh_structures)  # [T/A]
     bz_mesh_structures = np.ascontiguousarray(bz_mesh_structures)  # [T/A]
@@ -309,7 +317,11 @@ def _calc_structure_mode_flux_density_tables(
     bz_mesh_eig = np.zeros(eig_table_shape)  # [T/A]
     items = [x for x in product(range(neig), range(npassive))]
     if show_prog:
-        items = _progressbar(items, "Structure mode flux density (B-field) tables")
+        items = _progressbar(
+            items,
+            "Structure mode flux density (B-field) table contributions",
+            show_every=50,
+        )
     for i, j in items:
         br_mesh_eig[i, :, :] += tuv[j, i] * br_mesh_structures[j]
         bz_mesh_eig[i, :, :] += tuv[j, i] * bz_mesh_structures[j]

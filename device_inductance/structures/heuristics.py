@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 from shapely import Polygon
 
-MAX_EDGE_LENGTH_M = 0.15
+MAX_EDGE_LENGTH_M = 0.1
 """Default maximum length of an edge in the lowest-level discretization"""
 
 
