@@ -5,14 +5,15 @@ import device_inductance
 from pytest import approx
 
 
-from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
+from . import typical_outputs, typical_outputs_stabilized_eigenmode, typical_outputs_many_slices  # Required fixture
 
-__all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode"]
+__all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode", "typical_outputs_many_slices"]
 
 
 def test_model_reduction(
     typical_outputs: device_inductance.TypicalOutputs,
     typical_outputs_stabilized_eigenmode: device_inductance.TypicalOutputs,
+    typical_outputs_many_slices: device_inductance.TypicalOutputs,
 ):
     """
     In general,
@@ -47,7 +48,7 @@ def test_model_reduction(
     Instead, we can check the initial rate of change of coil current under a step in coil voltage
     between the full system and the transformed system."""
 
-    devices = [typical_outputs.device, typical_outputs_stabilized_eigenmode.device]
+    devices = [typical_outputs.device, typical_outputs_stabilized_eigenmode.device, typical_outputs_many_slices.device]
     ndevices = len(devices)
 
     import matplotlib.pyplot as plt

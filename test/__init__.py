@@ -24,6 +24,26 @@ def typical_outputs() -> device_inductance.TypicalOutputs:
 
 
 @pytest.fixture(scope="session")
+def typical_outputs_many_slices() -> device_inductance.TypicalOutputs:
+    # Set up a regular computational grid
+    # It would be nice to use a coarser grid,
+    # but in order for the tables to be testable,
+    # we need a fairly fine one
+    dxgrid = (0.05, 0.04)  # Different resolution to make sure they are never swapped
+    extent = (2.0 * dxgrid[0], 4.5, -3.0, 3.0)
+
+    # Load the default device
+    ods = device_inductance.load_default_ods()
+
+    # Pre-compute the usual set of matrices and tables
+    typical_outputs = device_inductance.typical(
+        ods, extent, dxgrid, max_nmodes=40, show_prog=False, n_radial_slices=50
+    )
+
+    return typical_outputs
+
+
+@pytest.fixture(scope="session")
 def typical_outputs_stabilized_eigenmode() -> device_inductance.TypicalOutputs:
     """With alternate options for model reduction method and plasma-coil force method"""
     # Because the device is immutable after init, we have to make a whole new one

@@ -154,9 +154,8 @@ def _calc_structure_flux_tables(
         items = _progressbar(items, "Structure flux tables", show_every)
     for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        ifil = (
-            s.ns
-        )  # [A] unit reference current for normalization times number of turns
+        #   [A] unit reference current for normalization times number of turns
+        ifil = s.ns
         rfil = s.rs  # [m]
         zfil = s.zs  # [m]
         psi_mesh_structures[i, :, :] = flux_circular_filament(
@@ -236,12 +235,12 @@ def _calc_mesh_flux_tables(
     nr, nz = shape
     dr = rgrid[1] - rgrid[0]
     dz = zgrid[1] - zgrid[0]
-    assert np.allclose(
-        np.diff(rgrid), dr, atol=1e-6
-    ), "Self-inductance calc requires uniform grid"
-    assert np.allclose(
-        np.diff(zgrid), dz, atol=1e-6
-    ), "Self-inductance calc requires uniform grid"
+    assert np.allclose(np.diff(rgrid), dr, atol=1e-6), (
+        "Self-inductance calc requires uniform grid"
+    )
+    assert np.allclose(np.diff(zgrid), dz, atol=1e-6), (
+        "Self-inductance calc requires uniform grid"
+    )
 
     # Calculate
     mesh_table_shape = (nr * nz, nr, nz)
