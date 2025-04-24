@@ -79,6 +79,7 @@ def typical(
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
     plasma_coil_force_method: Literal["tables", "mask"] = "mask",
+    n_radial_slices: int = 12,
 ) -> TypicalOutputs:
     """
     Generate a typical set of outputs,
@@ -99,6 +100,8 @@ def typical(
                                   or do direct filament calculations from points inside the limiter mask.
                                   Defaults to "mask", which is faster and uses less memory, but only includes
                                   nonzero entries inside the limiter, which requires a valid limiter geometry.
+        n_radial_slices: Number of radial slices to use for chunking large structures. Each slice is centered
+                            at the limiter centroid.
 
     Returns:
         A fully-computed set of matrices and tables covering the needs of a typical workflow
@@ -111,6 +114,7 @@ def typical(
         model_reduction_method=model_reduction_method,
         show_prog=show_prog,
         plasma_coil_force_method=plasma_coil_force_method,
+        n_radial_slices=n_radial_slices,
     )
 
     out = TypicalOutputs(

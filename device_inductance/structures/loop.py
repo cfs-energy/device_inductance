@@ -63,6 +63,7 @@ class PassiveStructureLoop:
         """[ohm] Total loop resistance; effective parallel resistance over all filaments"""
         # Filament resistance already includes accounting of the area, which incorporates the effect
         # of self.frac_of_loop, so we don't need to bring that factor into the calc here.
+        # This resistance calc treats the individual filaments as wired in parallel.
         resistance = 1.0 / sum([1.0 / f.resistance for f in self.filaments])
         return resistance  # [ohm]
 
