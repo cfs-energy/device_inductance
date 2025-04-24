@@ -11,7 +11,6 @@ from numpy.typing import NDArray
 import cfsem
 
 from shapely import Polygon
-import device_inductance
 from device_inductance import mesh
 
 from .input import PassiveStructureInput
@@ -30,7 +29,7 @@ class PassiveStructureLoop:
     # Inputs
     parent_name: str
     """Name of the input structure this was chunked from"""
-    original_polygon: Polygon
+    polygon: Polygon
     """Shape of the enclosing polygon before sub-discretization"""
     frac_of_loop: float
     """[dimensionless] What fraction of a full loop this represents; if the original input was chunked into
@@ -54,10 +53,10 @@ class PassiveStructureLoop:
         """
         [dimensionless] (Fractional) number of turns of each filament, weighted according to their
         cross-sectional area as a fraction of this loop's total.
-        
+
         Includes accounting of self.frac_of_loop, which may be non-unity!
         """
-        return self.frac_of_loop * np.array([f.polygon.area] / self.original_polygon.area for f in self.filaments)
+        return self.frac_of_loop * np.array([f.polygon.area / self.polygon.area for f in self.filaments])
 
     @cached_property
     def resistance(self) -> float:
@@ -141,7 +140,7 @@ class PassiveStructureLoop:
         # Call the collection of filaments a loop
         loop = PassiveStructureLoop(
             parent_name=parent_name,
-            original_polygon=polygon,
+            polygon=polygon,
             frac_of_loop=frac_of_loop,
             filaments=filaments,
         )
@@ -179,10 +178,10 @@ class PassiveStructureLoop:
 
         # Each chunk represents a fraction of one contiguous loop;
         # if we were to treat each chunk as a whole loop, the inductance of the system
-        # would diverge with increasing discretization
-        frac_of_loop = 1.0 / float(len(chunks))  # [dimensionless]
+        # would diverge with increasing discretization.
+        # Each sub-loop's fraction of loop is weighted based on its section area.
 
         return [
-            cls.from_poly(inp.parent_name, p, inp.resistivity, frac_of_loop)
+            cls.from_poly(inp.parent_name, p, inp.resistivity, frac_of_loop=p.area / inp.polygon.area)
             for p in chunks
         ]

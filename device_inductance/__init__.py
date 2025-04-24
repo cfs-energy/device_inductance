@@ -142,9 +142,12 @@ __all__ = [
     "Coil",
     "CoilFilament",
     "PassiveStructureLoop",
-    "model_reduction",
     "load_default_ods",
+
+    "logging",
+    "model_reduction",
     "contour",
     "sensors",
-    "mesh"
+    "mesh",
+    "structures",
 ]

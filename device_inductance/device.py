@@ -152,6 +152,7 @@ class DeviceInductance:
         self._model_reduction_method = model_reduction_method
         self._show_prog = show_prog
         self._plasma_coil_force_method = plasma_coil_force_method
+        self._n_radial_slices = n_radial_slices
 
         self.__post_init__()
 

@@ -96,7 +96,7 @@ plt.scatter(
 )
 color_cycle = cycle(["#d10606", "#06d12b", "#06c7d1"])
 for s in device.structures:
-    plt.plot(*s.original_polygon.boundary.xy, linewidth=3, color=next(color_cycle))
+    plt.plot(*s.polygon.boundary.xy, linewidth=3, color=next(color_cycle))
     for f in s.filaments:
         plt.plot(*f.polygon.boundary.xy, linewidth=1, color='k', alpha=0.7)
     
