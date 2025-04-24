@@ -35,7 +35,7 @@ class RadialSlicer:
         extent_radii = np.linalg.norm(
             np.array([x - centroid for x in extent_points]), axis=1
         )
-        pie_radius = np.max(extent_radii)
+        pie_radius = 1.05 * np.max(extent_radii)
 
         pie_angles = np.linspace(0.0, 2.0 * np.pi, n_slices + 1)
         pie_r = rmid + pie_radius * np.cos(pie_angles)

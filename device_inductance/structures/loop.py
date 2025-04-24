@@ -52,10 +52,12 @@ class PassiveStructureLoop:
     @cached_property
     def ns(self) -> NDArray:
         """
-        [dimensionless] (Fractional) number of turns of each filament.
+        [dimensionless] (Fractional) number of turns of each filament, weighted according to their
+        cross-sectional area as a fraction of this loop's total.
+        
         Includes accounting of self.frac_of_loop, which may be non-unity!
         """
-        return self.frac_of_loop * np.ones_like(self.rs) / float(len(self.rs))
+        return self.frac_of_loop * np.array([f.polygon.area] / self.original_polygon.area for f in self.filaments)
 
     @cached_property
     def resistance(self) -> float:

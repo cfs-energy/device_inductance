@@ -3,6 +3,7 @@ name = "device_inductance"
 version = "2.0.0"
 description = "Tokamak core inductance matrices and flux tables"
 authors = ["Commonwealth Fusion Systems <jlogan@cfs.energy>"]
+readme = "./README.md"
 license = "MIT OR Apache-2.0"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
