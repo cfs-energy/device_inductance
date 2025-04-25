@@ -154,6 +154,10 @@ def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs
         coils, device.grids, device.structure_flux_density_tables
     )
 
+    import matplotlib.pyplot as plt
+    plt.scatter(fz, fz / fz_alt)
+    plt.show()
+
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
     # and with a wide tolerance
@@ -204,7 +208,6 @@ def test_plasma_coil_force(typical_outputs: device_inductance.TypicalOutputs, ty
 
     assert np.allclose(fr_interped, fr_masked, rtol=2e-2, atol=1e-6)
     assert np.allclose(fz_interped, fz_masked, rtol=2e-2, atol=1e-6)
-
 
 
 def _calc_structure_coil_forces(coils, grids, structure_flux_density_tables):

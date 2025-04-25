@@ -12,6 +12,7 @@ import cfsem
 
 from shapely import Polygon
 from device_inductance import mesh
+from device_inductance.local import local_fields, LocalFields
 
 from .input import PassiveStructureInput
 from .slicer import RadialSlicer
@@ -112,6 +113,12 @@ class PassiveStructureLoop:
         m = cfsem.mutual_inductance_of_cylindrical_coils(rzn1, rzn2)
 
         return m  # [H]
+    
+    @cached_property
+    def local_fields(self) -> LocalFields:
+        """Tables and interpolators describing the field near the source filaments,
+        where a smooth flux solve is more reliable than direct filament calcs."""
+        return local_fields((self.rs, self.zs, self.ns), [f.polygon for f in self.filaments])
 
     @classmethod
     def from_poly(

@@ -162,6 +162,13 @@ def _calc_structure_flux_tables(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
         ).reshape(shape)  # [Wb/A]
 
+        # Replace parts very close to the structure element with the result of a smooth flux solve
+        psi_interpolator = s.local_fields.psi_per_amp_interpolator
+        local_extent = s.local_fields.extent
+        _, inds = _rect_mask(meshes, local_extent, pad=(0.0, 0.0))
+        obs = [rmesh[inds], zmesh[inds]]
+        psi_mesh_structures[i, inds[0], inds[1]] = psi_interpolator.eval(obs)
+
     return np.ascontiguousarray(psi_mesh_structures)  # [Wb/A]
 
 
@@ -200,22 +207,14 @@ def _calc_structure_flux_density_tables(
         br_mesh_structures[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_structures[i, :, :] = b[1].reshape(shape)  # [T/A]
 
-        # Similar to the coils, we'll get better results very close to the
-        # filaments using a finite difference on the flux values.
-        # Another option would be to make a loop of linear segments and do biot-savart
-
-        # Replacement table for this structure loop
-        br_from_psi, bz_from_psi = calc_flux_density_from_flux(
-            structure_flux_tables[i, :, :], rmesh, zmesh
-        )  # [T/A]
-
-        # Figure out what part we're replacing relative to each filament
-        for r, z in zip(rfil, zfil):
-            dist = ((rmesh - r) ** 2 + (zmesh - z) ** 2) ** 0.5  # [m]
-            inds = np.where(dist < _MIN_DIST)
-
-            br_mesh_structures[i, :, :][inds] = br_from_psi[inds]  # [T/A]
-            bz_mesh_structures[i, :, :][inds] = bz_from_psi[inds]  # [T/A]
+        # Replace parts very close to the structure element with the result of a smooth flux solve
+        br_interpolator = s.local_fields.br_per_amp_interpolator
+        bz_interpolator = s.local_fields.bz_per_amp_interpolator
+        local_extent = s.local_fields.extent
+        _, inds = _rect_mask(meshes, local_extent, pad=(0.0, 0.0))
+        obs = [rmesh[inds], zmesh[inds]]
+        br_mesh_structures[i, inds[0], inds[1]] = br_interpolator.eval(obs)
+        bz_mesh_structures[i, inds[0], inds[1]] = bz_interpolator.eval(obs)
 
     br_mesh_structures = np.ascontiguousarray(br_mesh_structures)  # [T/A]
     bz_mesh_structures = np.ascontiguousarray(bz_mesh_structures)  # [T/A]
