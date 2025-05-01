@@ -146,8 +146,8 @@ def eigenmode_reduction(
     See module-level docs for more detail about the model reduction approach.
 
     Args:
-        m: [H] QxQ symmetric mutual inductance matrix for conducting structure
-        r: [ohm]     QxQ diagonal resistance matrix for conducting structure
+        m: [H]   QxQ symmetric mutual inductance matrix for conducting structure
+        r: [ohm] QxQ diagonal resistance matrix for conducting structure
         max_neig: Optional maximum number of eigenvalues to keep. None -> keep all.
 
     Returns:
@@ -197,7 +197,7 @@ def stabilized_eigenmode_reduction(
     See module-level docs for more detail about the model reduction approach.
 
     Args:
-        m: [H] QxQ symmetric mutual inductance matrix for conducting structure
+        m: [H]   QxQ symmetric mutual inductance matrix for conducting structure
         r: [ohm] QxQ diagonal resistance matrix for conducting structure
         max_neig: Optional maximum number of eigenvalues to keep. None -> keep all.
 

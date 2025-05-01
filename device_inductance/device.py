@@ -596,8 +596,6 @@ class DeviceInductance:
         no particular claims are made here about the accuracy of the force calculations,
         and they should never be used for human safety applications.
         """
-        for s in self.structures:
-            print(type(s))
         return _calc_structure_coil_forces(self.coils, self.structures, self.show_prog)
 
     @cached_property

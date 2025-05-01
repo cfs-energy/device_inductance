@@ -156,9 +156,19 @@ def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs
 
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
-    # and with a wide tolerance
-    assert np.allclose(np.sum(fr, axis=0), np.sum(fr_alt, axis=0), rtol=0.2, atol=1e-6)
-    assert np.allclose(np.sum(fz, axis=0), np.sum(fz_alt, axis=0), rtol=0.2, atol=1e-6)
+    # and with a wide tolerance. Because the error in individual outliers is unbounded and depends primarily
+    # on coincidental grid locations, the is implemented by limiting the number of total outlier values.
+    rtol = 1e-2
+
+    fz_rel_err = (fz - fz_alt) / fz
+    fz_n_outliers = len(np.where(np.abs(fz_rel_err) > rtol)[0])
+
+    fr_rel_err = (fr - fr_alt) / fr
+    fr_n_outliers = len(np.where(np.abs(fr_rel_err) > rtol)[0])
+
+    n_entries = fr.flatten().size
+    assert fr_n_outliers < 0.05 * n_entries
+    assert fz_n_outliers < 0.05 * n_entries
 
 
 def test_structure_mode_coil_forces(typical_outputs: device_inductance.TypicalOutputs):
