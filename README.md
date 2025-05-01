@@ -2,7 +2,7 @@
 
 [Docs](https://device-inductance.readthedocs.io/)
 
-Tokamak core inductance matrices and flux tables, such as the one below:
+Tokamak core inductance matrices and flux tables.
 
 ![example](./docs/assets/structure_m.svg)
 

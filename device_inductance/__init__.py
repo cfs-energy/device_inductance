@@ -80,7 +80,7 @@ def typical(
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
     plasma_coil_force_method: Literal["tables", "mask"] = "mask",
-    n_radial_slices: int = 20,
+    n_radial_slices: int = 30,
 ) -> TypicalOutputs:
     """
     Generate a typical set of outputs,
