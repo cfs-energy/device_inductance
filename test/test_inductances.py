@@ -39,31 +39,34 @@ def test_circuit_inductances(typical_outputs: device_inductance.TypicalOutputs):
     for i in range(ncirc):
         # Get a flux interpolator for this circuit
         psii = device.circuit_flux_tables[i]
-        circi_psi_interp = MulticubicRectilinear.new([x for x in device.grids], psii.flatten())
+        circi_psi_interp = MulticubicRectilinear.new(
+            [x for x in device.grids], psii.flatten()
+        )
         for j in range(ncirc):
             circj = circuits[j]
 
             if m_interped[i, j] != 0.0:
                 # don't double up
                 continue
-            
+
             # Interpolate the flux from circuit `i` to all the filaments in each coil of
             # circuit `j`, applying their sign and number of turns in the process.
             #
             # Note this works fine for self-field because we're doing a smooth G-S patch
             # over each coil, so the flux field doesn't have any singularities in it
             # except possibly for the coils with windings that do not fall on a rectangular grid.
-            for (p, sign) in circj.coils:
+            for p, sign in circj.coils:
                 coilp = coils[p]
                 rs, zs, ns = coilp.rs, coilp.zs, coilp.ns
                 m_interped[i, j] += np.sum(sign * ns * circi_psi_interp.eval([rs, zs]))
-            
+
             m_interped[j, i] = m_interped[i, j]
 
     # Compare interpolated inductance to direct calc from tables
     m = device.circuit_mutual_inductances
 
     assert np.allclose(m, m_interped, rtol=5e-3, atol=1e-6)
+
 
 def test_coil_inductances(typical_outputs: device_inductance.TypicalOutputs):
     """
@@ -207,7 +210,8 @@ def test_structure_self_inductances_against_filamentized(
             (dr**2 + dz**2) ** 0.5 / 2 * np.ones_like(rs)
         )  # [m] minor radius of individual filaments
 
-        L_filamentized = _self_inductance_filamentized(rs, zs, ns, a)
+        print(s.frac_of_loop)
+        L_filamentized = s.frac_of_loop ** 2 * _self_inductance_filamentized(rs, zs, ns, a)
 
         inductance_ratio_err_filamentized.append(s.self_inductance / L_filamentized)
         assert s.self_inductance == approx(L_filamentized, rel=rtol)
@@ -334,7 +338,7 @@ def test_structure_self_inductances_against_grad_shafranov(
         # Unlike a plasma, all the filaments carry the same current here
         # so we can approximate the self-inductance by summing over the product of
         # the number of turns and the flux.
-        L_gs = np.sum(np.sum(psi_gs * nmask))
+        L_gs = s.frac_of_loop**2 * np.sum(np.sum(psi_gs * nmask))
 
         inductance_ratio_err_gs.append(s.self_inductance / L_gs)
         assert s.self_inductance == approx(L_gs, rel=rtol)
@@ -343,8 +347,8 @@ def test_structure_self_inductances_against_grad_shafranov(
         # from the G-S solve results
 
         # Extract B-fields from solved flux per radian
-        br, bz = _calc_B_from_psi(
-            psi_gs / (2.0 * np.pi), rmesh, zmesh
+        br, bz = device_inductance.calc_flux_density_from_flux(
+            psi_gs, rmesh, zmesh
         )  # [T/A] normalized B field
 
         # Estimate self-inductance using distributed calc
@@ -358,6 +362,7 @@ def test_structure_self_inductances_against_grad_shafranov(
             edge_path=boundary,
         )
 
+        L_distributed *= s.frac_of_loop**2
         assert s.self_inductance == approx(L_distributed, rel=rtol)
 
     # Keeping these here because we might revisit the error plots

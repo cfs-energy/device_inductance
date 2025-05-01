@@ -12,6 +12,7 @@ from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.coils import Coil, CoilFilament
 from device_inductance.structures import PassiveStructureLoop
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
+from device_inductance.utils import calc_flux_density_from_flux, gradient_order4, flux_solver, solve_flux_axisymmetric
 
 
 def load_default_ods() -> ODS:
@@ -147,6 +148,10 @@ __all__ = [
     "CoilFilament",
     "PassiveStructureLoop",
     "load_default_ods",
+    "calc_flux_density_from_flux",
+    "gradient_order4",
+    "flux_solver",
+    "solve_flux_axisymmetric",
 
     "logging",
     "model_reduction",

@@ -11,13 +11,20 @@ from cfsem import self_inductance_lyle6
 class PassiveStructureFilament:
     """A chunk of a cylindrically-symmetric passive conductor"""
 
-    parent_name: str  # Name of structure that this is associated with
-    r: float  # [m]
-    z: float  # [m]
-    area: float  # [m^2] cross-section area
-    resistance: float  # [Ohm] loop resistance
-    self_inductance: float  # [H]
-    polygon: Polygon  # Outline of mesh element
+    parent_name: str
+    """Name of structure that this is associated with"""
+    r: float
+    """[m] radial location of filament center"""
+    z: float
+    """[m] axial location of filament center"""
+    area: float
+    """[m^2] cross-section area"""
+    resistance: float
+    """Ohm] loop resistance"""
+    self_inductance: float
+    """[H] self-inductance assuming one full loop"""
+    polygon: Polygon
+    """[m] Outline of mesh element"""
 
 
 def _mesh_elem_to_fil(

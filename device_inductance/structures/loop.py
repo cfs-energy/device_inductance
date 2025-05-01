@@ -33,7 +33,7 @@ class PassiveStructureLoop:
     """Shape of the enclosing polygon before sub-discretization"""
     frac_of_loop: float
     """[dimensionless] What fraction of a full loop this represents; if the original input was chunked into
-    `n` loops, this represents a `1/n` fraction of a loop."""
+    multiple loops, each loop's frac_of_loop represents its portion of the original's section area."""
 
     # Discretization results
     filaments: list[PassiveStructureFilament]  # After meshing
@@ -56,7 +56,9 @@ class PassiveStructureLoop:
 
         Includes accounting of self.frac_of_loop, which may be non-unity!
         """
-        return self.frac_of_loop * np.array([f.polygon.area / self.polygon.area for f in self.filaments])
+        return self.frac_of_loop * np.array(
+            [f.polygon.area / self.polygon.area for f in self.filaments]
+        )
 
     @cached_property
     def resistance(self) -> float:
@@ -74,15 +76,16 @@ class PassiveStructureLoop:
         # each one is accounted as only a fraction of a full turn - otherwise, the calculated inductance
         # would diverge as the discretization becomes finer.
         fil_frac_of_loop = self.ns
-        ref_current = np.ones((1,))  # [A]
         self_inductance = 0.0  # [H]
         for i, f in enumerate(self.filaments):
             r = np.atleast_1d(f.r)
             z = np.atleast_1d(f.z)
-            mutuals = cfsem.flux_circular_filament(ref_current, r, z, self.rs, self.zs)
-            mutuals[i] = (
-                fil_frac_of_loop[i] * f.self_inductance
-            )  # Replace singularity with analytic estimate
+            ref_current = fil_frac_of_loop[i]  # [A]
+            mutuals = fil_frac_of_loop * cfsem.flux_circular_filament(
+                ref_current, r, z, self.rs, self.zs
+            )
+            # Replace singularity with analytic estimate
+            mutuals[i] = fil_frac_of_loop[i] ** 2 * f.self_inductance
             self_inductance += np.sum(mutuals)
 
         # This loop may be the result of discretizing a larger chunk of material,
@@ -134,8 +137,7 @@ class PassiveStructureLoop:
 
         # Make a filament from each mesh cell
         filaments = [
-            _mesh_elem_to_fil(p, resistivity, parent_name)
-            for p in sub_polygons
+            _mesh_elem_to_fil(p, resistivity, parent_name) for p in sub_polygons
         ]
 
         # Call the collection of filaments a loop
@@ -183,6 +185,11 @@ class PassiveStructureLoop:
         # Each sub-loop's fraction of loop is weighted based on its section area.
 
         return [
-            cls.from_poly(inp.parent_name, p, inp.resistivity, frac_of_loop=p.area / inp.polygon.area)
+            cls.from_poly(
+                inp.parent_name,
+                p,
+                inp.resistivity,
+                frac_of_loop=p.area / inp.polygon.area,
+            )
             for p in chunks
         ]
