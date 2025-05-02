@@ -7,9 +7,9 @@ from pytest import approx
 from interpn import MulticubicRectilinear
 
 
-from . import typical_outputs  # Required fixture
+from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
 
-__all__ = ["typical_outputs"]
+__all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode"]
 
 
 def test_coil_coil_forces(typical_outputs: device_inductance.TypicalOutputs):

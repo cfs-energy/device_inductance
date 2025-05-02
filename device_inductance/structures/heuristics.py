@@ -66,9 +66,9 @@ def poly_angle(
     # Expand to 3D and segmentize to avoid missing big sections
     pr, pz = p.boundary.segmentize(max_edge_length_m).xy
     xyz = np.array([pr, np.zeros_like(pr), pz])
-    centroid = np.array([centroid[0], 0.0, centroid[1]])
+    centroid_arr = np.array([centroid[0], 0.0, centroid[1]])
 
     # Get aggregate winding number w.r.t. centroid along polygon boundary
-    _wx, wy, _wz = winding_number(xyz, centroid)
+    _wx, wy, _wz = winding_number(xyz, centroid_arr)
 
     return np.max(np.abs(wy))  # [rad]

@@ -7,7 +7,7 @@ __author__ = metadata(str(__package__))["Author"]
 
 from omas import ODS, load_omas_json
 
-from device_inductance import model_reduction, contour, sensors
+from device_inductance import model_reduction, contour, sensors, logging, mesh, structures
 from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.coils import Coil, CoilFilament
 from device_inductance.structures import PassiveStructureLoop

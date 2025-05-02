@@ -21,6 +21,7 @@
 
 * !`DeviceInductance.structures` now returns a `list[PassiveStructureLoop]` instead of `list[PassiveStructureFilament]`
 * !`DeviceInductance` init now requires keyword arguments for all optional arguments (everything except the always-required ODS device description)
+* !Remove `DeviceInductance.structure_filament_rz()` function which no longer refers to valid fields
 * Set readme link in pyproject.toml
 
 ## 1.9.1 - 2025-03-27

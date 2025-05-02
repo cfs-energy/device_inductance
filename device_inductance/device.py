@@ -655,15 +655,6 @@ class DeviceInductance:
         )
 
     @cached_property
-    def structure_filament_rz(self) -> list[tuple[float, float]]:
-        """
-        [m] r,z coordinates of structure filaments.
-        Provided to prevent repeatedly assembling this representation when evaluating plasma inductances.
-        """
-        rz = [(x.r, x.z) for x in self.structures]
-        return rz  # [m]
-
-    @cached_property
     def coil_filament_rzn(self) -> list[list[tuple[float, float, float]]]:
         """
         ([m], [m], [dimensionless]) r,z,n of each coil's filaments, where `n` is number of turns.

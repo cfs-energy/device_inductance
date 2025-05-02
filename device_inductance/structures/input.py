@@ -17,7 +17,7 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
     """
 
     # Collect structure polygons and resistivities
-    structure_inputs: tuple[str, Polygon, float] = []
+    structure_inputs: list[PassiveStructureInput] = []
 
     #  Wall
     items = description["wall.description_2d.0.vessel"]["unit"].values()

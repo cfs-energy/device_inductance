@@ -34,7 +34,7 @@ cfsem = "^2.3.1"
 pytest = "8.3.3"
 coverage = "7.6.1"
 ruff = "0.11.6"
-pyright = "1.1.354"  # Pin to avoid spurious errors
+pyright = "1.1.400"  # Pin to avoid spurious errors
 mktestdocs = "0.2.3"
 # Docs
 mkdocs = ">=1.6.0"

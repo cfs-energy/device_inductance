@@ -24,7 +24,7 @@ class RadialSlicer:
         # Unpack
         self.centroid = centroid
         rmid, zmid = centroid
-        centroid = np.array(centroid)
+        centroid_arr = np.array(centroid)
 
         # Choose a pie radius
         #   Actualize all the points at the corners of the extent
@@ -33,7 +33,7 @@ class RadialSlicer:
         ]
         #   Find the largest radius from the centroid to any of the points
         extent_radii = np.linalg.norm(
-            np.array([x - centroid for x in extent_points]), axis=1
+            np.array([x - centroid_arr for x in extent_points]), axis=1
         )
         pie_radius = 1.05 * np.max(extent_radii)
 
@@ -57,13 +57,11 @@ class RadialSlicer:
         # Remove edge and vertex intersections
         new_polygons = [g for g in intersections if isinstance(g, Polygon)]
 
-        # It's possible to have one polygon intersect more than once,
-        # and we have to handle that.
-        def has_polygons(x):
-            return isinstance(x, GeometryCollection) or isinstance(x, MultiPolygon)
-
-        for g in [x for x in intersections if has_polygons(x)]:
-            new_polygons.extend([x for x in g.geoms if isinstance(x, Polygon)])
+        for g in intersections:
+            # It's possible to have one polygon intersect more than once,
+            # at an edge, at a point, etc. and we have to handle that all cases.
+            if isinstance(g, GeometryCollection) or isinstance(g, MultiPolygon):
+                new_polygons.extend([x for x in g.geoms if isinstance(x, Polygon)])
 
         # Remove any empty polygons; these are common
         new_polygons = [x for x in new_polygons if not x.is_empty]
