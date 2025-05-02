@@ -4,7 +4,7 @@
 
 Tokamak core inductance matrices and flux tables.
 
-![example](./docs/assets/structure_m.svg)
+![OSSFE2025](./docs/assets/POS-38_Logan.jpg)
 
 See docs for detailed installation instructions and usage examples.
 
