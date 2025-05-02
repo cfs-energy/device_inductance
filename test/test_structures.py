@@ -11,6 +11,10 @@ def test_structure_invariants(
     typical_outputs: device_inductance.TypicalOutputs,
     typical_outputs_many_slices: device_inductance.TypicalOutputs,
 ):
+    """
+    Check that the total self-inductance, total resistance, and mode eigenvalues
+    are not changing much with changing discretization coarseness.
+    """
     d1 = typical_outputs.device
     d2 = typical_outputs_many_slices.device
 
