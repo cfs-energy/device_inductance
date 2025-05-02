@@ -51,7 +51,7 @@ The example differs from real SPARC configurations in at least the following way
     ffloop["position.0.r"] = 3.0
     ffloop["position.0.z"] = 0.0
     #   Partial flux loop
-    pfloop = ods["magnetics.flux_loop.0"]
+    pfloop = ods["magnetics.flux_loop.1"]
     pfloop["type.index"] = 2
     pfloop["name"] = "dummy_partial_flux_loop"
     pfloop["position.0.r"] = 3.0
