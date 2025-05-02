@@ -23,6 +23,8 @@
 * !`DeviceInductance` init now requires keyword arguments for all optional arguments (everything except the always-required ODS device description)
 * !Remove `DeviceInductance.structure_filament_rz()` function which no longer refers to valid fields
 * Set readme link in pyproject.toml
+* Round eigenvalues to 16 decimal places for nonnegativity check in `stabilized_eigenmode_reduction()`
+  * Some eigenvalues can come out slightly negative (around -1e-20) due to numerical error
 
 ## 1.9.1 - 2025-03-27
 
