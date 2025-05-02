@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.0 - 2025-05-02
+
+### Added
+
+* Add `structures` subpackage & split major components of structure discretization into separate files
+* Add multi-level structure discretization
+  * Inputs: combined cross-sectional representations of wall and pf_passive components
+  * Loops: One or more coarse chunk(s) of input cross-sections
+    * Chunked radially about the limiter centroid to prioritize preservation of structure-plasma interaction
+    * Inputs are only chunked into multiple loops if the input structure takes up a large angular span relative to the limiter centroid AND has a large perimeter-to-area ratio; otherwise, the input is treated as a single loop.
+      * This results in detecting and chunking the vacuum vessel, but not smaller or blockier structures like coil supports
+  * Filaments: Thin-filament representation of the result of meshing each loop
+    * Each loop owns many filaments, and its aggregate inductances, resistance, flux and B-field, etc. are calculated using those filaments as the source points
+* Add tests of structure discretization invariants
+  * Total system self-inductance and resistance checked for invariance under changing discretization coarseness
+  * Structure model reduction eigenvalues checked for consistency - some small change is expected here, but not much
+
+### Changed
+
+* !`DeviceInductance.structures` now returns a `list[PassiveStructureLoop]` instead of `list[PassiveStructureFilament]`
+* !`DeviceInductance` init now requires keyword arguments for all optional arguments (everything except the always-required ODS device description)
+* Set readme link in pyproject.toml
+
 ## 1.9.1 - 2025-03-27
 
 ### Fixed
