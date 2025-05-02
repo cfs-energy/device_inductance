@@ -51,4 +51,4 @@ build-backend = "poetry.masonry.api"
 target-version = "py311"
 
 [tool.coverage.report]
-fail_under = 94
+fail_under = 96

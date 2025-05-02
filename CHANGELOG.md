@@ -28,6 +28,7 @@
   * Some eigenvalues can come out slightly negative (around -1e-20) due to numerical error
 * Update default device to include example full flux loop sensor
   * Update sensor tests to assert presence of all sensor types
+* Increment coverage fail-under to 96%
 
 ## 1.9.1 - 2025-03-27
 
