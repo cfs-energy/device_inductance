@@ -72,4 +72,3 @@ class RadialSlicer:
         assert abs(1.0 - abs(area_new / area_orig)) < 1e-3
 
         return new_polygons
-
