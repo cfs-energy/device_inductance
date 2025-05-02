@@ -29,6 +29,8 @@
 * Update default device to include example full flux loop sensor
   * Update sensor tests to assert presence of all sensor types
 * Increment coverage fail-under to 96%
+* Check more structure inductances with grad-shafranov method & remove the extremely slow and redundant filamentized self-inductance check
+* Remove stale test-only functions
 
 ## 1.9.1 - 2025-03-27
 

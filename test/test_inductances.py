@@ -157,74 +157,6 @@ def test_coil_inductances(typical_outputs: device_inductance.TypicalOutputs):
     assert np.allclose(mcc_without_cs, mcc_approx_without_cs, rtol=0.1, atol=1e-6)
 
 
-def test_structure_self_inductances_against_filamentized(
-    typical_outputs: device_inductance.TypicalOutputs,
-):
-    """
-    Test self-inductance approximation for conducting structure against a filamentized self-inductance calc.
-
-    To balance test rigor against time spent running tests, 50 filaments are tested.
-    """
-    rtol = 0.15
-    structures = typical_outputs.device.structures
-    nstruct = len(structures)
-    nskip = max((nstruct // 50), 1)
-
-    inductance_ratio_err_filamentized = []
-
-    for s in structures[::nskip]:
-        poly = s.polygon
-
-        # Extract the boundary of the object
-        pathr, pathz = poly.exterior.xy
-        padding = 0.01
-        extent = [
-            np.min(pathr) - padding,
-            np.max(pathr) + padding,
-            np.min(pathz) - padding,
-            np.max(pathz) + padding,
-        ]
-
-        # Make a meshgrid spanning the object
-        ngrid = 50
-        rgrid = np.linspace(extent[0], extent[1], ngrid, endpoint=True)
-        zgrid = np.linspace(extent[2], extent[3], ngrid, endpoint=True)
-        rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")
-        dr = rgrid[1] - rgrid[0]
-        dz = zgrid[1] - zgrid[0]
-
-        # Build a normalized positive mask of the interior of the object
-        # which will represent a unit current distributed more-or-less
-        # evenly over the interior
-        mask = np.zeros_like(rmesh)
-        for ir in range(ngrid):
-            for iz in range(ngrid):
-                if poly.contains(shapely.Point(rgrid[ir], zgrid[iz])):
-                    mask[ir, iz] = 1.0
-        interior_inds = np.where(mask > 0.0)
-
-        rs = rmesh[interior_inds]  # [m] filament r coords
-        zs = zmesh[interior_inds]  # [m] filament z coords
-        ns = np.ones_like(rs) / np.sum(mask)  # number of turns per filament
-        a = (
-            (dr**2 + dz**2) ** 0.5 / 2 * np.ones_like(rs)
-        )  # [m] minor radius of individual filaments
-
-        print(s.frac_of_loop)
-        L_filamentized = s.frac_of_loop ** 2 * _self_inductance_filamentized(rs, zs, ns, a)
-
-        inductance_ratio_err_filamentized.append(s.self_inductance / L_filamentized)
-        assert s.self_inductance == approx(L_filamentized, rel=rtol)
-
-    # Keeping these here because we might revisit the error plots
-    # import matplotlib.pyplot as plt
-
-    # plt.hist(inductance_ratio_err_filamentized)
-    # n = len(inductance_ratio_err_filamentized)
-    # plt.title(f"Relative error\nL_rectangular / L_filamentized\nN={n}")
-    # plt.show()
-
-
 def test_structure_self_inductances_against_grad_shafranov(
     typical_outputs: device_inductance.TypicalOutputs,
 ):
@@ -235,10 +167,12 @@ def test_structure_self_inductances_against_grad_shafranov(
 
     To balance test rigor against time spent running tests, a very small set of filaments are tested.
     """
-    rtol = 0.15
+    rtol = 0.05
+    n_to_check = 10
     structures = typical_outputs.device.structures
     nstruct = len(structures)
-    nskip = max((nstruct // 5), 1)
+    # Check ~`n_to_check` instead of every entry to avoid excessive run time
+    nskip = max(nstruct // n_to_check, 1)  
 
     inductance_ratio_err_gs = []
 
@@ -372,123 +306,3 @@ def test_structure_self_inductances_against_grad_shafranov(
     # n = len(inductance_ratio_err_gs)
     # plt.title(f"Relative error\nL_rectangular / L_gs\nN={n}")
     # plt.show()
-
-
-def _self_inductance_filamentized(r, z, n, a) -> float:
-    """
-    Estimate self-inductance of filamentized coil pack
-    using an approximation for the self-inductance of filaments as
-    a circular-section loop.
-
-    Args:
-        r (ndarray): radius, coil center
-        z (ndarray): axial position, coil center
-        n (ndarray): number of turns
-        a (ndarray): effective minor radius of individual filaments
-    Returns:
-        float: [H], estimated self-inductance
-    """
-
-    # Make estimate of same coil's self-inductance based on filamentized model
-    nfil = r.size
-    fs = np.array((r, z, n)).T
-    M = np.zeros((nfil, nfil))
-    for i in range(nfil):
-        for j in range(nfil):
-            if i != j:
-                # If this is a mutual inductance between two different filaments, use that calc
-                M[i, j] = mutual_inductance_of_circular_filaments(
-                    fs[i, :], fs[j, :]
-                )  # [H]
-            else:
-                # Self-inductance of this filament
-                major_radius_filament = fs[i, :][0]  # [m] Filament radius
-                minor_radius_filament = a[
-                    i
-                ]  # [m] Heuristic approximation for effective wire radius of filament
-                num_turns = fs[i, :][2]  # [] Filament number of turns
-                L_f = num_turns**2 * self_inductance_circular_ring_wien(
-                    major_radius_filament, minor_radius_filament
-                )  # [H]
-                M[i, j] = (
-                    L_f  # [H] Rough estimate of self-inductance of conductor cross-section assigned to this filament
-                )
-
-    # Since all current values are equal across the filaments, effective L is just the sum of all elements of M
-    L = np.sum(np.sum(M))  # [H]
-
-    return L  # [H]
-
-
-def _calc_B_from_psi(psi_per_radian, rmesh, zmesh) -> tuple[NDArray, NDArray]:
-    """
-    Back-calculate B-field from poloidal flux per radian, per Wesson eqn 3.2.2,
-    by 4th-order finite difference on a regular grid.
-    """
-
-    dr = rmesh[1][0] - rmesh[0][0]
-    dz = zmesh[0][1] - zmesh[0][0]
-
-    # Finite-difference coeffs
-    # https:#en.wikipedia.org/wiki/Finite_difference_coefficient
-    ddx_central = np.array(
-        [
-            # 4th-order central difference for first derivative
-            (-2, 1 / 12),
-            (-1, -2 / 3),
-            # (0, 0.0),
-            (1, 2 / 3),
-            (2, -1 / 12),
-        ]
-    )
-
-    ddx_fwd = np.array(
-        [
-            # 4th-order forward difference for first derivative
-            (0, -25 / 12),
-            (1, 4),
-            (2, -3),
-            (3, 4 / 3),
-            (4, -1 / 4),
-        ]
-    )
-    ddx_bwd = -ddx_fwd  # Reverse & flip signs
-
-    dpsidR = np.zeros_like(psi_per_radian)
-    for offs, w in ddx_central:
-        start = int(2 + offs)
-        end = int(-3 + offs)
-        dpsidR[2:-3, :] += (
-            w * psi_per_radian[start:end, :] / dr
-        )  # Central difference on interior points
-    for offs, w in ddx_fwd:
-        offs = int(offs)
-        dpsidR[0:2, :] += (
-            w * psi_per_radian[offs : offs + 2, :] / dr
-        )  # One-sided difference on left side
-    for offs, w in ddx_bwd:
-        start = int(-3 + offs)
-        end = int(-2 + offs)
-        dpsidR[-3:, :] += w * psi_per_radian[start:end, :] / dr  # right side
-
-    dpsidZ = np.zeros_like(psi_per_radian)
-    for offs, w in ddx_central:
-        start = int(2 + offs)
-        end = int(-3 + offs)
-        dpsidZ[:, 2:-3] += w * psi_per_radian[:, start:end] / dz  # Interior points
-    for offs, w in ddx_fwd:
-        offs = int(offs)
-        dpsidZ[:, 0:2] += (
-            w * psi_per_radian[:, offs : offs + 2] / dz
-        )  # One-sided difference on bottom
-    for offs, w in ddx_bwd:
-        start = int(-3 + offs)
-        end = int(-2 + offs)
-        dpsidZ[:, -3:] += w * psi_per_radian[:, start:end] / dz  # top
-
-    r_inv = rmesh**-1
-
-    Br = -r_inv * dpsidZ  # [T]
-    Bz = r_inv * dpsidR  # [T]
-
-    return (Br, Bz)
