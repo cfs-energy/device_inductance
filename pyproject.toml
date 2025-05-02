@@ -31,11 +31,11 @@ cfsem = "^2.3.1"
 
 [tool.poetry.group.dev.dependencies]
 # Tests
-pytest = "8.3.3"
-coverage = "7.6.1"
-ruff = "0.11.6"
+pytest = "8.3.5"
+coverage = "7.8.0"
+ruff = "0.11.8"
 pyright = "1.1.400"  # Pin to avoid spurious errors
-mktestdocs = "0.2.3"
+mktestdocs = "0.2.4"
 # Docs
 mkdocs = ">=1.6.0"
 mkdocs-material = ">=9.6.12"
