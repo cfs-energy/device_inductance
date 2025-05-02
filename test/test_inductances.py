@@ -1,14 +1,10 @@
 import numpy as np
 import shapely
 
-from numpy.typing import NDArray
-
 import device_inductance
 from cfsem import (
     self_inductance_lyle6,
     flux_circular_filament,
-    mutual_inductance_of_circular_filaments,
-    self_inductance_circular_ring_wien,
     gs_operator_order2,
     self_inductance_distributed_axisymmetric_conductor,
 )
@@ -172,7 +168,7 @@ def test_structure_self_inductances_against_grad_shafranov(
     structures = typical_outputs.device.structures
     nstruct = len(structures)
     # Check ~`n_to_check` instead of every entry to avoid excessive run time
-    nskip = max(nstruct // n_to_check, 1)  
+    nskip = max(nstruct // n_to_check, 1)
 
     inductance_ratio_err_gs = []
 
