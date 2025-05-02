@@ -37,7 +37,7 @@ def typical_outputs_many_slices() -> device_inductance.TypicalOutputs:
 
     # Pre-compute the usual set of matrices and tables
     typical_outputs = device_inductance.typical(
-        ods, extent, dxgrid, max_nmodes=40, show_prog=False, n_radial_slices=50
+        ods, extent, dxgrid, max_nmodes=40, show_prog=False, n_radial_slices=100
     )
 
     return typical_outputs
