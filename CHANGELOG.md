@@ -31,6 +31,7 @@
 * Increment coverage fail-under to 96%
 * Check more structure inductances with grad-shafranov method & remove the extremely slow and redundant filamentized self-inductance check
 * Remove stale test-only functions
+* Tighten tolerances on model reduction dI/dt check to 1% for PF/CS and 10% for DV/VS
 
 ## 1.9.1 - 2025-03-27
 
