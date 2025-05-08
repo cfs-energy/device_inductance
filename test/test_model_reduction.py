@@ -125,8 +125,8 @@ def test_model_reduction(
         # the DIV and VS coils, sacrificing accuracy in their
         # results for the ability to simulate the rest of the system.
         atol = 25.0  # [A/s] allow a dead zone for coils with near zero response
-        rtol_pf_cs = 0.05
-        rtol_div_vs = 3.0  # It's pretty bad, esp. for the VS coils
+        rtol_pf_cs = 0.01
+        rtol_div_vs = 0.1  # DV and VS coils are more sensitive
         inds_pf_cs = [
             i
             for i, c in enumerate(coils)
@@ -196,7 +196,7 @@ def test_model_reduction(
         plt.gca().set_xticklabels([x.name for x in device.coils], rotation=90.0)
         plt.xlabel("Coil Number")
         plt.ylabel("dI/dt [A/s]")
-        plt.title(device.model_reduction_method)
+        plt.title(f"{device.model_reduction_method}\n{device._n_radial_slices} slices")
         plt.legend()
 
     plt.show()
