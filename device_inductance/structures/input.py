@@ -47,4 +47,8 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
             )
         )
 
+    # Make sure the input polygons had a valid point ordering and aren't folded up
+    for inp in structure_inputs:
+        assert inp.polygon.is_valid
+
     return structure_inputs
