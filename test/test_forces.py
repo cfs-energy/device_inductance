@@ -157,7 +157,7 @@ def test_structure_coil_forces(typical_outputs: device_inductance.TypicalOutputs
     # The interpolation method is not very good for some coils that are very closely coupled to structures,
     # so this comparison is best done in bulk across the whole population of filaments
     # and with a wide tolerance. Because the error in individual outliers is unbounded and depends primarily
-    # on coincidental grid locations, the is implemented by limiting the number of total outlier values.
+    # on coincidental grid locations, the error check is implemented by limiting the number of total outlier values.
     rtol = 1e-2
 
     fz_rel_err = (fz - fz_alt) / fz

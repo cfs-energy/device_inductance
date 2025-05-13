@@ -59,7 +59,7 @@ class RadialSlicer:
 
         for g in intersections:
             # It's possible to have one polygon intersect more than once,
-            # at an edge, at a point, etc. and we have to handle that all cases.
+            # at an edge, at a point, etc. and we have to handle all cases.
             if isinstance(g, GeometryCollection) or isinstance(g, MultiPolygon):
                 new_polygons.extend([x for x in g.geoms if isinstance(x, Polygon)])
 
