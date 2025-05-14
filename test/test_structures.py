@@ -34,4 +34,4 @@ def test_structure_invariants(
     eigd2 = d2.structure_mode_eigenvalues
     eigd2 = np.abs(eigd2 / eigd2[0])
 
-    assert np.allclose(eigd1[:8], eigd2[:8], rtol=0.1)
+    assert np.allclose(eigd1, eigd2, rtol=0.1, atol=0.02)

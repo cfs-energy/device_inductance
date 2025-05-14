@@ -33,7 +33,8 @@ class PassiveStructureLoop:
     """Shape of the enclosing polygon before sub-discretization"""
     frac_of_loop: float
     """[dimensionless] What fraction of a full loop this represents; if the original input was chunked into
-    multiple loops, each loop's frac_of_loop represents its portion of the original's section area."""
+    multiple loops, each loop's frac_of_loop represents its portion of the original's section area.
+    If the original also has a non-unity frac_of_loop, that is reflected here as well."""
 
     # Discretization results
     filaments: list[PassiveStructureFilament]  # After meshing
@@ -183,13 +184,12 @@ class PassiveStructureLoop:
         # if we were to treat each chunk as a whole loop, the inductance of the system
         # would diverge with increasing discretization.
         # Each sub-loop's fraction of loop is weighted based on its section area.
-
         return [
             cls.from_poly(
                 inp.parent_name,
                 p,
                 inp.resistivity,
-                frac_of_loop=p.area / inp.polygon.area,
+                frac_of_loop=inp.frac_of_loop * p.area / inp.polygon.area,
             )
             for p in chunks
         ]
