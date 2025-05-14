@@ -7,6 +7,10 @@
 * Add `structures` subpackage & split major components of structure discretization into separate files
 * Add multi-level structure discretization
   * Inputs: combined cross-sectional representations of wall and pf_passive components
+    * Wall "elements" in each wall "section" from the ODS are considered to be electrically continuous parallel inductors
+    * pf_passive "elements" from the ODS are considered to be electrically continuous parallel inductors if they are in contact, where contact is detected as a cross-sectional distance of less than 1e-4 meter. Contact detection is not performed between pf_passive and wall elements, only between pf_passive elements; wall continuity logic is contained entirely in the definition of wall sections.
+    * Groups of continuous elements (wall or pf_passive) assign each element a frac_of_loop based on its area as a fraction of the group's total area. This frac_of_loop is propagated to downstream inductance and field calcs.
+    * This grouping and scaling system makes the result insensitive to upstream processes that pre-discretize some structures
   * Loops: One or more coarse chunk(s) of input cross-sections
     * Chunked radially about the limiter centroid to prioritize preservation of structure-plasma interaction
     * Inputs are only chunked into multiple loops if the input structure takes up a large angular span relative to the limiter centroid AND has a large perimeter-to-area ratio; otherwise, the input is treated as a single loop.
