@@ -43,7 +43,6 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
             rs = wall_elem["outline.r"]  # [m]
             zs = wall_elem["outline.z"]  # [m]
             polygon = Polygon([x for x in zip(rs, zs)])
-            print(polygon.area)
             section_area += polygon.area  # [m^2]
             section_polygons[name] = polygon  # [m]
 
