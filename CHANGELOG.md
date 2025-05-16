@@ -2,6 +2,10 @@
 
 ## 2.0.0 - 2025-05-02
 
+Overhaul structure discretization strategy and improve testing of structures and structure model reduction.
+* Add multi-level discretization to reduce number of distinct structure elements
+* Improve testing of structure discretization to provide sub-1% match on important parameters
+
 ### Added
 
 * Add `structures` subpackage & split major components of structure discretization into separate files
