@@ -212,8 +212,11 @@ for ax in axes:
 plt.suptitle("Eigenmode Bz Maps")
 
 plt.figure()
-plt.title("Sum of Passive Filament Flux Maps")
-table_imshow(np.sum(typical_outputs.psi_s, axis=0).T)
+plt.title("Sum of Passive Filament Flux Maps\nNormalized By Area")
+structure_areas = np.array([s.polygon.area for s in typical_outputs.device.structures])  # [m^2]
+structure_areas = structure_areas.reshape((len(structure_areas), 1, 1))
+structure_area_fracs = structure_areas / np.sum(structure_areas)
+table_imshow(np.sum(typical_outputs.psi_s * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
@@ -225,9 +228,9 @@ plt.scatter(
 
 
 fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
-plt.suptitle("Sum of Passive Structure Filament B-field Maps")
+plt.suptitle("Sum of Passive Structure Filament B-field Maps\nNormalized By Area")
 plt.sca(axes[0])
-table_imshow(np.sum(br_structures, axis=0).T)
+table_imshow(np.sum(br_structures * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
