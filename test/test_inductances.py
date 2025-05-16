@@ -268,7 +268,7 @@ def test_structure_self_inductances_against_grad_shafranov(
         # Unlike a plasma, all the filaments carry the same current here
         # so we can approximate the self-inductance by summing over the product of
         # the number of turns and the flux.
-        L_gs = s.frac_of_loop**2 * np.sum(np.sum(psi_gs * nmask))
+        L_gs = np.sum(np.sum(psi_gs * nmask))
 
         inductance_ratio_err_gs.append(s.self_inductance / L_gs)
         assert s.self_inductance == approx(L_gs, rel=rtol)
@@ -292,7 +292,6 @@ def test_structure_self_inductances_against_grad_shafranov(
             edge_path=boundary,
         )
 
-        L_distributed *= s.frac_of_loop**2
         assert s.self_inductance == approx(L_distributed, rel=rtol)
 
     # Keeping these here because we might revisit the error plots

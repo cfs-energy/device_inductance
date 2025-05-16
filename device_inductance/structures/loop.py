@@ -31,10 +31,6 @@ class PassiveStructureLoop:
     """Name of the input structure this was chunked from"""
     polygon: Polygon
     """Shape of the enclosing polygon before sub-discretization"""
-    frac_of_loop: float
-    """[dimensionless] What fraction of a full loop this represents; if the original input was chunked into
-    multiple loops, each loop's frac_of_loop represents its portion of the original's section area.
-    If the original also has a non-unity frac_of_loop, that is reflected here as well."""
 
     # Discretization results
     filaments: list[PassiveStructureFilament]  # After meshing
@@ -57,9 +53,7 @@ class PassiveStructureLoop:
 
         Includes accounting of self.frac_of_loop, which may be non-unity!
         """
-        return self.frac_of_loop * np.array(
-            [f.polygon.area / self.polygon.area for f in self.filaments]
-        )
+        return np.array([f.polygon.area / self.polygon.area for f in self.filaments])
 
     @cached_property
     def resistance(self) -> float:
@@ -106,7 +100,6 @@ class PassiveStructureLoop:
         """
 
         if id(other) == id(self):
-            # Self-inductance already has `self.frac_of_loop` accounted
             return self.self_inductance
 
         # Each loop's `ns` includes accounting of both filament number of turns and overall number of turns
@@ -123,7 +116,6 @@ class PassiveStructureLoop:
         parent_name: str,
         polygon: Polygon,
         resistivity: float,
-        frac_of_loop: float,
         max_edge_length_m: float = MAX_EDGE_LENGTH_M,
     ) -> PassiveStructureLoop:
         """
@@ -142,12 +134,7 @@ class PassiveStructureLoop:
         ]
 
         # Call the collection of filaments a loop
-        loop = PassiveStructureLoop(
-            parent_name=parent_name,
-            polygon=polygon,
-            frac_of_loop=frac_of_loop,
-            filaments=filaments,
-        )
+        loop = PassiveStructureLoop(parent_name, polygon, filaments)
 
         return loop
 
@@ -184,12 +171,4 @@ class PassiveStructureLoop:
         # if we were to treat each chunk as a whole loop, the inductance of the system
         # would diverge with increasing discretization.
         # Each sub-loop's fraction of loop is weighted based on its section area.
-        return [
-            cls.from_poly(
-                inp.parent_name,
-                p,
-                inp.resistivity,
-                frac_of_loop=inp.frac_of_loop * p.area / inp.polygon.area,
-            )
-            for p in chunks
-        ]
+        return [cls.from_poly(inp.parent_name, p, inp.resistivity) for p in chunks]

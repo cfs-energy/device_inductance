@@ -125,8 +125,9 @@ def test_model_reduction(
         # the DIV and VS coils, sacrificing accuracy in their
         # results for the ability to simulate the rest of the system.
         atol = 25.0  # [A/s] allow a dead zone for coils with near zero response
-        rtol_pf_cs = 0.01
-        rtol_div_vs = 0.1  # DV and VS coils are more sensitive
+        rtol_pf_cs = 0.001
+        #   DV and VS coils are more sensitive, but should still match well since we're not truncating modes
+        rtol_div_vs = 0.01
         inds_pf_cs = [
             i
             for i, c in enumerate(coils)

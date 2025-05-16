@@ -17,7 +17,7 @@ def typical_outputs() -> device_inductance.TypicalOutputs:
 
     # Pre-compute the usual set of matrices and tables
     typical_outputs = device_inductance.typical(
-        ods, extent, dxgrid, max_nmodes=40, show_prog=False
+        ods, extent, dxgrid, max_nmodes=int(1e6), show_prog=False
     )
 
     return typical_outputs
@@ -37,7 +37,7 @@ def typical_outputs_many_slices() -> device_inductance.TypicalOutputs:
 
     # Pre-compute the usual set of matrices and tables
     typical_outputs = device_inductance.typical(
-        ods, extent, dxgrid, max_nmodes=40, show_prog=False, n_radial_slices=100
+        ods, extent, dxgrid, max_nmodes=int(1e6), show_prog=False, n_radial_slices=100
     )
 
     return typical_outputs
@@ -64,7 +64,7 @@ def typical_outputs_stabilized_eigenmode() -> device_inductance.TypicalOutputs:
         ods,
         extent,
         dxgrid,
-        max_nmodes=40,
+        max_nmodes=int(1e6),
         show_prog=False,
         model_reduction_method="stabilized eigenmode",
         plasma_coil_force_method="tables"

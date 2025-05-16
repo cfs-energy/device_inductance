@@ -7,10 +7,7 @@
 * Add `structures` subpackage & split major components of structure discretization into separate files
 * Add multi-level structure discretization
   * Inputs: combined cross-sectional representations of wall and pf_passive components
-    * Wall "elements" in each wall "section" from the ODS are considered to be electrically continuous parallel inductors
-    * pf_passive "elements" from the ODS are considered to be electrically continuous parallel inductors if they are in contact, where contact is detected as a cross-sectional distance of less than 1e-4 meter. Contact detection is not performed between pf_passive and wall elements, only between pf_passive elements; wall continuity logic is contained entirely in the definition of wall sections.
-    * Groups of continuous elements (wall or pf_passive) assign each element a frac_of_loop based on its area as a fraction of the group's total area. This frac_of_loop is propagated to downstream inductance and field calcs.
-    * This grouping and scaling system makes the result insensitive to upstream processes that pre-discretize some structures
+    * Wall "elements" in each wall "section" treated the same as a pf_passive "element"
   * Loops: One or more coarse chunk(s) of input cross-sections
     * Chunked radially about the limiter centroid to prioritize preservation of structure-plasma interaction
     * Inputs are only chunked into multiple loops if the input structure takes up a large angular span relative to the limiter centroid AND has a large perimeter-to-area ratio; otherwise, the input is treated as a single loop.
@@ -18,7 +15,7 @@
   * Filaments: Thin-filament representation of the result of meshing each loop
     * Each loop owns many filaments, and its aggregate inductances, resistance, flux and B-field, etc. are calculated using those filaments as the source points
 * Add tests of structure discretization invariants
-  * Total system self-inductance and resistance checked for invariance under changing discretization coarseness
+  * Total system stored energy per unit cross-sectional current density and total parallel resistance checked for invariance under changing discretization coarseness
   * Structure model reduction eigenvalues checked for consistency - some small change is expected here, but not much
 
 ### Changed
@@ -35,7 +32,8 @@
 * Increment coverage fail-under to 96%
 * Check more structure inductances with grad-shafranov method & remove the extremely slow and redundant filamentized self-inductance check
 * Remove stale test-only functions
-* Tighten tolerances on model reduction dI/dt check to 1% for PF/CS and 10% for DV/VS
+* Tighten tolerances on model reduction dI/dt check to 0.1% for PF/CS and 1% for DV/VS
+  * Use all modes for testing to avoid consuming truncation error, which is up to the user - we're only testing whether the approach to model transformation is correct, not whether a given level of truncation is acceptable for a given application
 
 ## 1.9.1 - 2025-03-27
 
