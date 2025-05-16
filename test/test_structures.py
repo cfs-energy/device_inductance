@@ -47,4 +47,4 @@ def test_structure_invariants(
     eigd2 = d2.structure_mode_eigenvalues[:40]
     eigd2 = np.abs(eigd2 / eigd2[0])
 
-    assert np.allclose(eigd1, eigd2, rtol=0.1, atol=0.02), "Eigenvalue profile changed with discretization"
+    assert np.allclose(eigd1, eigd2, rtol=0.01, atol=0.02), "Eigenvalue profile changed with discretization"

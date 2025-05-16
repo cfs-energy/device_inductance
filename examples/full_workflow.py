@@ -241,7 +241,7 @@ plt.scatter(
 )
 plt.title("Br")
 plt.sca(axes[1])
-table_imshow(np.sum(bz_structures, axis=0).T)
+table_imshow(np.sum(bz_structures * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
