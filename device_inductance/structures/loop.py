@@ -50,23 +50,19 @@ class PassiveStructureLoop:
         """
         [dimensionless] (Fractional) number of turns of each filament, weighted according to their
         cross-sectional area as a fraction of this loop's total.
-
-        Includes accounting of self.frac_of_loop, which may be non-unity!
         """
         return np.array([f.polygon.area / self.polygon.area for f in self.filaments])
 
     @cached_property
     def resistance(self) -> float:
         """[ohm] Total loop resistance; effective parallel resistance over all filaments"""
-        # Filament resistance already includes accounting of the area, which incorporates the effect
-        # of self.frac_of_loop, so we don't need to bring that factor into the calc here.
         # This resistance calc treats the individual filaments as wired in parallel.
         resistance = 1.0 / sum([1.0 / f.resistance for f in self.filaments])
         return resistance  # [ohm]
 
     @cached_property
     def self_inductance(self) -> float:
-        """[H] Self-inductance with accounting for `frac_of_loop` for both sub-filaments and the loop as a whole."""
+        """[H] Self-inductance of this loop."""
         # Because the filaments within a chunk are assumed to be in parallel and isopotential on the section,
         # each one is accounted as only a fraction of a full turn - otherwise, the calculated inductance
         # would diverge as the discretization becomes finer.
@@ -94,8 +90,7 @@ class PassiveStructureLoop:
 
     def mutual_inductance(self, other: PassiveStructureLoop) -> float:
         """
-        [H] Mutual inductance between two loops, accounting for their `frac_of_loop` which may be
-        non-unit if they were made by discretizing a larger loop.
+        [H] Mutual inductance between two loops.
         If `self` passed as `other`, the precalculated self-inductance is returned.
         """
 
