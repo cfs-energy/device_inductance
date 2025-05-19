@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from device_inductance.coils import Coil
-from device_inductance.structures import PassiveStructureFilament
+from device_inductance.structures import PassiveStructureLoop
 from device_inductance.circuits import CoilSeriesCircuit
 from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 from device_inductance.logging import log
@@ -57,7 +57,9 @@ def _calc_coil_coil_forces(
                     coils[j].zs,
                 ]  # [m] observation points (filament locations)
                 fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-                fz[i][j] = 0.0  # No self-propulsion; interpolation would produce slightly nonzero value
+                fz[i][j] = (
+                    0.0  # No self-propulsion; interpolation would produce slightly nonzero value
+                )
             else:
                 # If these are two separate coils, we can use a full IxB calc
                 # which is slower but more accurate than interpolation
@@ -117,7 +119,7 @@ def _calc_circuit_coil_forces(
 
 def _calc_structure_coil_forces(
     coils: list[Coil],
-    structures: list[PassiveStructureFilament],
+    structures: list[PassiveStructureLoop],
     show_prog: bool = True,
 ) -> tuple[NDArray, NDArray]:
     ncoils = len(coils)
@@ -125,32 +127,37 @@ def _calc_structure_coil_forces(
 
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
     fz = np.zeros((nstruct, ncoils))
-
     items = (
-        _progressbar([x for x in range(nstruct)], "Structure-coil force rows")
+        _progressbar(structures, "Structure-coil force rows")
         if show_prog
-        else range(nstruct)
+        else structures
     )
-    for i in items:
-        sr = np.atleast_1d(structures[i].r)
-        sz = np.atleast_1d(structures[i].z)
-        si = np.ones_like(sr)
+    for i, s in enumerate(items):
+        ifil = s.ns  # [dimensionless] unit reference current for normalization times number of turns
+        rfil = s.rs  # [m]
+        zfil = s.zs  # [m]
         for j in range(ncoils):
-            r = coils[j].rs
-            z = coils[j].zs
-            n = coils[j].ns
+            r = coils[j].rs  # [m]
+            z = coils[j].zs  # [m]
+            n = coils[j].ns  # [dimensionless]
             length_factor = 2.0 * np.pi * r * n
             zero = np.zeros_like(r)
 
             # Replacing J with I*dL gives body force instead of body force density
             # and we can use the full circular length to scale the I*dL product in the toroidal direction
             frij, _, fzij = body_force_density_circular_filament_cartesian(
-                si, sr, sz, obs=(r, zero, z), j=(zero, length_factor, zero), par=False
+                ifil,
+                rfil,
+                zfil,
+                obs=(r, zero, z),
+                j=(zero, length_factor, zero),
+                par=False,
             )
             fr[i, j] = sum(frij)
             fz[i, j] = sum(fzij)
 
     return (fr, fz)
+
 
 def _calc_plasma_coil_forces(
     coils: list[Coil],

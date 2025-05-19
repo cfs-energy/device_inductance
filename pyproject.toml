@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "device_inductance"
-version = "1.9.1"
+version = "2.0.0"
 description = "Tokamak core inductance matrices and flux tables"
 authors = ["Commonwealth Fusion Systems <jlogan@cfs.energy>"]
+readme = "./README.md"
 license = "MIT OR Apache-2.0"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -22,23 +23,23 @@ numpy = "^2"
 omas = ">=0.94.0"
 #omas = { path = "../omas" }
 gmsh = "^4.13.1"
-shapely = "^2.0.2"
+shapely = "^2.1.0"
 scipy = "^1.12"
-rich = "^13.9.4"
+rich = "^14.0.0"
 interpn = "^0.2.5"
 cfsem = "^2.3.1"
 
 [tool.poetry.group.dev.dependencies]
 # Tests
-pytest = "8.3.3"
-coverage = "7.6.1"
-ruff = "0.6.9"
-pyright = "1.1.354"  # Pin to avoid spurious errors
-mktestdocs = "0.2.3"
+pytest = "8.3.5"
+coverage = "7.8.0"
+ruff = "0.11.8"
+pyright = "1.1.400"  # Pin to avoid spurious errors
+mktestdocs = "0.2.4"
 # Docs
 mkdocs = ">=1.6.0"
-mkdocs-material = ">=9.5.25"
-mkdocstrings = { version = ">=0.25.1", extras = ["python"] }
+mkdocs-material = ">=9.6.12"
+mkdocstrings = { version = ">=0.29.1", extras = ["python"] }
 # Examples
 matplotlib = "^3.9.1"
 
@@ -50,4 +51,4 @@ build-backend = "poetry.masonry.api"
 target-version = "py311"
 
 [tool.coverage.report]
-fail_under = 94
+fail_under = 96

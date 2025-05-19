@@ -1,5 +1,7 @@
 """End-to-end workflow generating all outputs and some exploratory plots"""
 
+from itertools import chain, cycle
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -74,9 +76,8 @@ def table_imshow(arr, contours=True):
 
 
 plt.figure(figsize=(5, 6.5))
-structure_rs = [x.r for x in device.structures]
-structure_zs = [x.z for x in device.structures]
-areas = np.array([x.area for x in device.structures])
+structure_rs = list(chain(*[x.rs for x in device.structures]))
+structure_zs = list(chain(*[x.zs for x in device.structures]))
 mask_for_plot = 1.0 - device.limiter_mask.copy()
 plt.imshow(
     device.limiter_mask.T,
@@ -88,13 +89,18 @@ plt.imshow(
 plt.scatter(
     structure_rs,
     structure_zs,
-    s=5 * areas / np.max(areas),
+    s=5,
     marker=".",
     color="k",
     alpha=1,
 )
+color_cycle = cycle(["#d10606", "#06d12b", "#06c7d1"])
 for s in device.structures:
-    plt.plot(*s.polygon.boundary.xy, color="k")
+    plt.plot(*s.polygon.boundary.xy, linewidth=3, color=next(color_cycle))
+    for f in s.filaments:
+        plt.plot(*f.polygon.boundary.xy, linewidth=1, color='k', alpha=0.7)
+    
+
 for c in device.coils:
     coil_rs = [f.r for f in c.filaments]
     coil_zs = [f.z for f in c.filaments]
@@ -206,12 +212,15 @@ for ax in axes:
 plt.suptitle("Eigenmode Bz Maps")
 
 plt.figure()
-plt.title("Sum of Passive Filament Flux Maps")
-table_imshow(np.sum(typical_outputs.psi_s, axis=0).T)
+plt.title("Sum of Passive Filament Flux Maps\nNormalized By Area")
+structure_areas = np.array([s.polygon.area for s in typical_outputs.device.structures])  # [m^2]
+structure_areas = structure_areas.reshape((len(structure_areas), 1, 1))
+structure_area_fracs = structure_areas / np.sum(structure_areas)
+table_imshow(np.sum(typical_outputs.psi_s * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
-    s=5 * areas / np.max(areas),
+    s=5,
     marker=".",
     color="k",
     alpha=1,
@@ -219,24 +228,24 @@ plt.scatter(
 
 
 fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
-plt.suptitle("Sum of Passive Structure Filament B-field Maps")
+plt.suptitle("Sum of Passive Structure Filament B-field Maps\nNormalized By Area")
 plt.sca(axes[0])
-table_imshow(np.sum(br_structures, axis=0).T)
+table_imshow(np.sum(br_structures * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
-    s=5 * areas / np.max(areas),
+    s=5,
     marker=".",
     color="k",
     alpha=1,
 )
 plt.title("Br")
 plt.sca(axes[1])
-table_imshow(np.sum(bz_structures, axis=0).T)
+table_imshow(np.sum(bz_structures * structure_area_fracs, axis=0).T)
 plt.scatter(
     structure_rs,
     structure_zs,
-    s=5 * areas / np.max(areas),
+    s=5,
     marker=".",
     color="k",
     alpha=1,

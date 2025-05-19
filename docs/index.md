@@ -1,15 +1,15 @@
 # Device Inductance
 
-Tokamak core inductance matrices and flux tables, such as the one below:
+Tokamak core inductance matrices and flux tables.
 
-![example](./assets/structure_m.svg)
+![OSSFE2025](./assets/POS-38_Logan.jpg)
 
 ## Methods
 
 | Object | Methods                                       | Future Plans                            |
 | ------ | -------                                       | ------                                  |
-| Coils  | Axisymmetric filamentized & finite-difference flux and B-fields | 3D filamentized vector potential & B; finite element for B-fields near winding pack; 3D coil winding paths for non-axisymmetric coils |
-| Passive Structures | Meshed axisymmetric filamentization; eigenmode model reduction | Finite element for 3D effects |
+| Coils  | - Axisymmetric filamentized & finite-difference flux and B-fields<br> - Axisymmetric force contributions to each coil | 3D filamentized vector potential & B; finite element for B-fields near winding pack; 3D coil winding paths for non-axisymmetric coils |
+| Passive Structures | - Multi-level meshed axisymmetric filamentization<br> - Eigenmode model reduction | Finite element for 3D effects |
 | Sensors | Ideal integrated response w/ numerical integration in space for flux loops and Bpol probes | Additional sensor kinds |
 | Plasma | Grad-Shafranov flux solve via tabulated Green's functions OR finite difference w/ filamentized free boundary condition calc | Rigid-body dynamics linearization |
 

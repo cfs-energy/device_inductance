@@ -146,8 +146,8 @@ def eigenmode_reduction(
     See module-level docs for more detail about the model reduction approach.
 
     Args:
-        m: [H] QxQ symmetric mutual inductance matrix for conducting structure
-        r: [ohm]     QxQ diagonal resistance matrix for conducting structure
+        m: [H]   QxQ symmetric mutual inductance matrix for conducting structure
+        r: [ohm] QxQ diagonal resistance matrix for conducting structure
         max_neig: Optional maximum number of eigenvalues to keep. None -> keep all.
 
     Returns:
@@ -197,7 +197,7 @@ def stabilized_eigenmode_reduction(
     See module-level docs for more detail about the model reduction approach.
 
     Args:
-        m: [H] QxQ symmetric mutual inductance matrix for conducting structure
+        m: [H]   QxQ symmetric mutual inductance matrix for conducting structure
         r: [ohm] QxQ diagonal resistance matrix for conducting structure
         max_neig: Optional maximum number of eigenvalues to keep. None -> keep all.
 
@@ -226,9 +226,10 @@ def stabilized_eigenmode_reduction(
     # and this improves speed and numerical error.
     # Per tradition, we have eigenvalues `d` and eigenvectors `v`.
     d, v = np.linalg.eigh(cov)  # ([s^2], [dimensionless])
-    #    Get the actual timescales instead of the square
-    #    These corrected eigenvalues are the "loadings" in PCA jargon
-    assert np.all(d >= 0.0), "Eigenvalues of a covariance matrix should be positive"
+    #    Get the actual timescales instead of the square.
+    #    These corrected eigenvalues are the "loadings" in PCA jargon.
+    #    Some eigenvalues may come out slightly negative around 1e-20, but only due to numerical noise.
+    assert np.all(d.round(decimals=16) >= 0.0), "Eigenvalues of a covariance matrix should be positive"
     d = np.sqrt(d)  # [s]
 
     # Sort eigenvalues by magnitude and keep the permutation,

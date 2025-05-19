@@ -139,8 +139,7 @@ def test_structure_tables(typical_outputs: device_inductance.TypicalOutputs):
     Test flux tables by using them to back-calculate off-diagonal
     mutual inductance terms.
     """
-    rtol = 5e-3  # Error is mostly from grid resolution
-    min_distance = 0.15  # [m] compare elements at least this far apart
+    rtol = 1e-2  # Error is mostly from grid resolution
     psi_s = typical_outputs.psi_s  # [Wb/A]
     br, bz = typical_outputs.device.structure_flux_density_tables  # [T/A]
     mss = typical_outputs.mss  # [H]
@@ -155,24 +154,16 @@ def test_structure_tables(typical_outputs: device_inductance.TypicalOutputs):
 
     for i in range(nstructs):
         psi_interp = MulticubicRegular.new(dims, starts, steps, psi_s[i, :, :])
-        r = structures[i].r
-        z = structures[i].z
+        # r = structures[i].rs
+        # z = structures[i].zs
         for j in range(nstructs):
             if j == i:
                 continue  # Skip self-inductance terms
 
-            robs = np.array([structures[j].r])
-            zobs = np.array([structures[j].z])
+            robs = structures[j].rs
+            zobs = structures[j].zs
 
-            # Skip structure elements that are too close together
-            # because the grid is not fine enough to resolve this
-            dr = r - robs
-            dz = z - zobs
-            dl = (dr**2 + dz**2) ** 0.5
-            if dl < min_distance:
-                continue
-
-            mutual_inductance_interped = np.sum(psi_interp.eval([robs, zobs]))
+            mutual_inductance_interped = np.sum(structures[j].ns * psi_interp.eval([robs, zobs]))
             assert mutual_inductance_interped == approx(mss[i, j], rel=rtol)
 
         # For the structure's effect on B-field, we mostly care about the interior

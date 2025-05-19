@@ -19,6 +19,8 @@ def test_full_flux_loops(typical_outputs: device_inductance.TypicalOutputs):
 
     testmesh = TESTFUNC(rmesh)
 
+    assert len(typical_outputs.device.full_flux_loops) > 0
+    
     for ffloop in typical_outputs.device.full_flux_loops:
         assert ffloop.response(grids, testmesh) == approx(TESTFUNC(ffloop.r), rel=1e-3)
 
@@ -29,6 +31,8 @@ def test_partial_flux_loops(typical_outputs: device_inductance.TypicalOutputs):
     rmesh, _ = typical_outputs.meshes
 
     testmesh = TESTFUNC(rmesh)
+
+    assert len(typical_outputs.device.partial_flux_loops) > 0
 
     unit_vector = np.array(
         [1.0 / np.sqrt(2.0), 1.0 / np.sqrt(2.0)]
@@ -51,6 +55,8 @@ def test_poloidal_field_probes(typical_outputs: device_inductance.TypicalOutputs
     """Make sure the pickup coils return the sum of projected components of the B-field on their axis"""
     grids = typical_outputs.grids
     rmesh, zmesh = typical_outputs.meshes
+
+    assert len(typical_outputs.device.poloidal_field_probes) > 0
 
     # Field varying on R
     testmesh = TESTFUNC(rmesh)

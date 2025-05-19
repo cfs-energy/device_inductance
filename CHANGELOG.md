@@ -1,5 +1,44 @@
 # Changelog
 
+## 2.0.0 - 2025-05-02
+
+Overhaul structure discretization strategy and improve testing of structures and structure model reduction.
+* Add multi-level discretization to reduce number of distinct structure elements
+* Improve testing of structure discretization to provide sub-1% match on important parameters
+
+### Added
+
+* Add `structures` subpackage & split major components of structure discretization into separate files
+* Add multi-level structure discretization
+  * Inputs: combined cross-sectional representations of wall and pf_passive components
+    * Wall "elements" in each wall "section" treated the same as a pf_passive "element"
+  * Loops: One or more coarse chunk(s) of input cross-sections
+    * Chunked radially about the limiter centroid to prioritize preservation of structure-plasma interaction
+    * Inputs are only chunked into multiple loops if the input structure takes up a large angular span relative to the limiter centroid AND has a large perimeter-to-area ratio; otherwise, the input is treated as a single loop.
+      * This results in detecting and chunking the vacuum vessel, but not smaller or blockier structures like coil supports
+  * Filaments: Thin-filament representation of the result of meshing each loop
+    * Each loop owns many filaments, and its aggregate inductances, resistance, flux and B-field, etc. are calculated using those filaments as the source points
+* Add tests of structure discretization invariants
+  * Total system stored energy per unit cross-sectional current density and total parallel resistance checked for invariance under changing discretization coarseness
+  * Structure model reduction eigenvalues checked for consistency - some small change is expected here, but not much
+
+### Changed
+
+* !`DeviceInductance.structures` now returns a `list[PassiveStructureLoop]` instead of `list[PassiveStructureFilament]`
+* !`DeviceInductance` init now requires keyword arguments for all optional arguments (everything except the always-required ODS device description)
+* !Remove `DeviceInductance.structure_filament_rz()` function which no longer refers to valid fields
+* Set readme link in pyproject.toml
+* Update readme image to explanatory poster
+* Round eigenvalues to 16 decimal places for nonnegativity check in `stabilized_eigenmode_reduction()`
+  * Some eigenvalues can come out slightly negative (around -1e-20) due to numerical error
+* Update default device to include example full flux loop sensor
+  * Update sensor tests to assert presence of all sensor types
+* Increment coverage fail-under to 96%
+* Check more structure inductances with grad-shafranov method & remove the extremely slow and redundant filamentized self-inductance check
+* Remove stale test-only functions
+* Tighten tolerances on model reduction dI/dt check to 0.1% for PF/CS and 1% for DV/VS
+  * Use all modes for testing to avoid consuming truncation error, which is up to the user - we're only testing whether the approach to model transformation is correct, not whether a given level of truncation is acceptable for a given application
+
 ## 1.9.1 - 2025-03-27
 
 ### Fixed

@@ -5,14 +5,15 @@ import device_inductance
 from pytest import approx
 
 
-from . import typical_outputs, typical_outputs_stabilized_eigenmode  # Required fixture
+from . import typical_outputs, typical_outputs_stabilized_eigenmode, typical_outputs_many_slices  # Required fixture
 
-__all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode"]
+__all__ = ["typical_outputs", "typical_outputs_stabilized_eigenmode", "typical_outputs_many_slices"]
 
 
 def test_model_reduction(
     typical_outputs: device_inductance.TypicalOutputs,
     typical_outputs_stabilized_eigenmode: device_inductance.TypicalOutputs,
+    typical_outputs_many_slices: device_inductance.TypicalOutputs,
 ):
     """
     In general,
@@ -47,7 +48,7 @@ def test_model_reduction(
     Instead, we can check the initial rate of change of coil current under a step in coil voltage
     between the full system and the transformed system."""
 
-    devices = [typical_outputs.device, typical_outputs_stabilized_eigenmode.device]
+    devices = [typical_outputs.device, typical_outputs_stabilized_eigenmode.device, typical_outputs_many_slices.device]
     ndevices = len(devices)
 
     import matplotlib.pyplot as plt
@@ -124,8 +125,9 @@ def test_model_reduction(
         # the DIV and VS coils, sacrificing accuracy in their
         # results for the ability to simulate the rest of the system.
         atol = 25.0  # [A/s] allow a dead zone for coils with near zero response
-        rtol_pf_cs = 0.05
-        rtol_div_vs = 3.0  # It's pretty bad, esp. for the VS coils
+        rtol_pf_cs = 0.001
+        #   DV and VS coils are more sensitive, but should still match well since we're not truncating modes
+        rtol_div_vs = 0.01
         inds_pf_cs = [
             i
             for i, c in enumerate(coils)
@@ -195,7 +197,7 @@ def test_model_reduction(
         plt.gca().set_xticklabels([x.name for x in device.coils], rotation=90.0)
         plt.xlabel("Coil Number")
         plt.ylabel("dI/dt [A/s]")
-        plt.title(device.model_reduction_method)
+        plt.title(f"{device.model_reduction_method}\n{device._n_radial_slices} slices")
         plt.legend()
 
     plt.show()

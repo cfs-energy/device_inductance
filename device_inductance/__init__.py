@@ -7,11 +7,12 @@ __author__ = metadata(str(__package__))["Author"]
 
 from omas import ODS, load_omas_json
 
-from device_inductance import model_reduction, contour, sensors
+from device_inductance import model_reduction, contour, sensors, logging, mesh, structures
 from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.coils import Coil, CoilFilament
-from device_inductance.structures import PassiveStructureFilament
+from device_inductance.structures import PassiveStructureLoop
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
+from device_inductance.utils import calc_flux_density_from_flux, gradient_order4, flux_solver, solve_flux_axisymmetric
 
 
 def load_default_ods() -> ODS:
@@ -50,7 +51,7 @@ The example differs from real SPARC configurations in at least the following way
     ffloop["position.0.r"] = 3.0
     ffloop["position.0.z"] = 0.0
     #   Partial flux loop
-    pfloop = ods["magnetics.flux_loop.0"]
+    pfloop = ods["magnetics.flux_loop.1"]
     pfloop["type.index"] = 2
     pfloop["name"] = "dummy_partial_flux_loop"
     pfloop["position.0.r"] = 3.0
@@ -79,6 +80,7 @@ def typical(
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
     plasma_coil_force_method: Literal["tables", "mask"] = "mask",
+    n_radial_slices: int = 30,
 ) -> TypicalOutputs:
     """
     Generate a typical set of outputs,
@@ -99,6 +101,8 @@ def typical(
                                   or do direct filament calculations from points inside the limiter mask.
                                   Defaults to "mask", which is faster and uses less memory, but only includes
                                   nonzero entries inside the limiter, which requires a valid limiter geometry.
+        n_radial_slices: Number of radial slices to use for chunking large structures. Each slice is centered
+                            at the limiter centroid.
 
     Returns:
         A fully-computed set of matrices and tables covering the needs of a typical workflow
@@ -111,6 +115,7 @@ def typical(
         model_reduction_method=model_reduction_method,
         show_prog=show_prog,
         plasma_coil_force_method=plasma_coil_force_method,
+        n_radial_slices=n_radial_slices,
     )
 
     out = TypicalOutputs(
@@ -141,9 +146,17 @@ __all__ = [
     "typical",
     "Coil",
     "CoilFilament",
-    "PassiveStructureFilament",
-    "model_reduction",
+    "PassiveStructureLoop",
     "load_default_ods",
+    "calc_flux_density_from_flux",
+    "gradient_order4",
+    "flux_solver",
+    "solve_flux_axisymmetric",
+
+    "logging",
+    "model_reduction",
     "contour",
     "sensors",
+    "mesh",
+    "structures",
 ]
