@@ -18,28 +18,23 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Setup
-      run: |
-        curl -sSL https://install.python-poetry.org | python - --version 1.8.3
-        export PATH="/home/runner/.local/bin:$PATH"
-
-        sudo apt update
-        sudo apt install -y gmsh
-        poetry install
-
     - name: Run checks
       run: |
-        export PATH="/home/runner/.local/bin:$PATH"
-        
-        poetry run ruff check .
-        poetry run pyright ./device_inductance
-        MPLBACKEND="AGG" poetry run coverage run --source=./device_inductance -m pytest ./test --verbose
-        
-        # Coverage fail-under limit is configured in pyproject.toml
-        poetry run coverage report
+        sudo apt update
+        sudo apt install -y gmsh
+
+        # Install
+        uv pip install .
+
+        # Lint and test
+        uv run --locked ruff check ./device_inductance
+        uv run --locked pyright ./device_inductance
+        MPLBACKEND="AGG" uv run --locked coverage run --source=./device_inductance -m pytest ./test --verbose
+        uv run --locked coverage report
