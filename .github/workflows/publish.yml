@@ -30,5 +30,5 @@ jobs:
 
         # Install
         uv pip install .
-        uv pip install twine==5.1.1
+        uv pip install twine==6.1.0
         uv build && twine upload -u "__token__" -p ${{ secrets.PYPI_TOKEN }} ./dist/*
