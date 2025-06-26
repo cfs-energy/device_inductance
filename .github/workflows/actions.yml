@@ -31,7 +31,7 @@ jobs:
         sudo apt install -y gmsh
 
         # Install
-        uv pip install .
+        uv pip install .[dev]
 
         # Lint and test
         uv run --locked ruff check ./device_inductance

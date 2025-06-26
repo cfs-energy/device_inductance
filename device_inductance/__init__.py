@@ -3,7 +3,6 @@ from typing import Literal
 from pathlib import Path
 
 __version__ = metadata(str(__package__))["Version"]
-__author__ = metadata(str(__package__))["Author"]
 
 from omas import ODS, load_omas_json
 

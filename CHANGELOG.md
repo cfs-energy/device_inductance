@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 - 2025-06-26
+
+### Changed
+
+* Use setuptools build backend instead of hatchling
+* Include py.typed marker in wheel
+* Remove `__author__` field that was deprecated at the language level
+
 ## 2.1.0 - 2025-06-12
 
 ### Changed
