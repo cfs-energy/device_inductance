@@ -69,6 +69,13 @@ def local_fields(
 ) -> LocalFields:
     """
     Estimate local self-field of a collection of filaments with polygon representations.
+
+    Args:
+        fil_rzn: r-coord, z-coord, and number of turns for each filament
+        polygons: polygon section of each filament
+
+    Returns:
+        Structure containing local field map components and interpolators
     """
     rs, zs, ns = fil_rzn
     grids_regular = _make_grids_regular(rs, zs)
@@ -223,7 +230,7 @@ def _allocate_current_irregular(
     itor_per_amp = itor_per_amp.reshape(rmesh.shape)
 
     # Shift the centroid of the current map to match the centroid of the filaments
-    rcfil = np.sum(rs * ns) / total_turns # [m]
+    rcfil = np.sum(rs * ns) / total_turns  # [m]
     zcfil = np.sum(zs * ns) / total_turns
     fil_centroid = np.array((rcfil, zcfil))
 
@@ -233,17 +240,16 @@ def _allocate_current_irregular(
         nr, nz = v.shape
 
         # Make linear basis functions about the center of the array
-        rbasis = rshift * (np.array(range(nr), dtype=float) - (nr/2)) / (nr / 2)
-        zbasis = zshift * (np.array(range(nz), dtype=float) - (nz/2)) / (nz / 2)
-        
+        rbasis = rshift * (np.array(range(nr), dtype=float) - (nr / 2)) / (nr / 2)
+        zbasis = zshift * (np.array(range(nz), dtype=float) - (nz / 2)) / (nz / 2)
+
         # Broadcast shift bases
         vshifted = v + v * rbasis.reshape(nr, 1) + v * zbasis.reshape(1, nz)
 
         # Rescale to preserve total
-        vshifted *= (np.sum(v) / np.sum(vshifted))
+        vshifted *= np.sum(v) / np.sum(vshifted)
 
         return vshifted
-
 
     def itor_centroid(shift):
         """Find the mesh current centroid given some percent shift in current between neighboring cells"""
@@ -253,7 +259,7 @@ def _allocate_current_irregular(
         zc = np.sum(itor_shifted * zmesh) / isum
 
         return np.array((rc, zc))
-    
+
     # Solve a shift to match the current centroid of the mesh representation to the
     # current centroid of the filament representation.
     shift = fsolve(lambda shift: itor_centroid(shift) - fil_centroid, x0=np.zeros(2))
