@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from functools import cached_property
 
 import numpy as np
 from numpy.typing import NDArray
 from omas import ODS
+from shapely import Polygon
 
 from cfsem import (
     self_inductance_lyle6,
@@ -14,11 +14,9 @@ from cfsem import (
     self_inductance_circular_ring_wien,
 )
 
-from .utils import solve_flux_axisymmetric, calc_flux_density_from_flux
+from interpn import MulticubicRegular
 
-from interpn import MulticubicRectilinear
-
-from device_inductance.logging import log
+from device_inductance.local import local_fields, LocalFields
 
 
 @dataclass(frozen=True)
@@ -58,93 +56,17 @@ class Coil:
     """Discretized circular filaments describing the coil's winding pattern"""
 
     @cached_property
-    def grids(self) -> Optional[tuple[NDArray, NDArray]]:
-        """Generate a set of regular r,z grids that span the coil winding pack centers exactly
-        if possible, or None if the winding pack can't be represented exactly.
-
-        Adds 4 grid cells of padding around the winding pack to deconflict the
-        cells with nonzero current density from the boundary conditions of a
-        flux solve.
-
-        If only one unit cell is present on either axis, the grid will be
-        expanded 1cm in either direction.
-        """
-
-        # Get coordinates with a unit cell
-        unique_r = np.array(sorted(list(set([f.r for f in self.filaments]))))  # [m]
-        unique_z = np.array(sorted(list(set([f.z for f in self.filaments]))))
-
-        # Make sure there are enough unit cells to work with,
-        # expanding dimensions if necessary
-        if len(unique_r) == 1:
-            r = unique_r[0]
-            unique_r = [r - 1e-2, r, r + 1e-2]
-        if len(unique_z) == 1:
-            z = unique_z[0]
-            unique_z = [z - 1e-2, z, z + 1e-2]
-        if len(unique_r) < 2 or len(unique_z) < 2:
-            log().error("Failed to expand coil grid dimensionality")
-            return None
-
-        # Check if the coordinates have regular spacing,
-        # which is required to support the finite difference solve
-        drs = np.diff(unique_r)
-        drmean = np.mean(drs)
-        if np.any(np.abs(drs - drmean) / drmean > 1e-4):
-            log().warning(
-                f"Coil {self.name} filaments are not on a regular grid; skipping grid for smooth self-field"
-            )
-            return None
-        dzs = np.diff(unique_z)
-        dzmean = np.mean(dzs)
-        if np.any(np.abs(dzs - dzmean) / dzmean > 1e-4):
-            log().warning(
-                f"Coil {self.name} filaments are not on a regular grid; skipping grid for smooth self-field"
-            )
-            return None
-
-        # Extend grids by a few cells outside the winding pack
-        # 7 is the true minimum; 2x 4th-order finite difference patches
-        # will be stacked to extract the flux then the flux density, which means
-        # 7 cells see direct interaction with boundary conditions and must not
-        # have nonzero current density to produce sane results; npad = 6 produces junk outputs.
-        npad = 7
-        nr = len(unique_r) + 2 * npad
-        nz = len(unique_z) + 2 * npad
-        r_pad = npad * drmean
-        z_pad = npad * dzmean
-        rgrid = np.linspace(unique_r[0] - r_pad, unique_r[-1] + r_pad, nr)
-        zgrid = np.linspace(unique_z[0] - z_pad, unique_z[-1] + z_pad, nz)
-
-        # Make sure the grid doesn't cross zero.
-        # If this check becomes a problem, there is an alternate strategy
-        # to double resolution and spread the coil's current density mapping
-        # across more than one neighboring cell, but that is too much complexity
-        # to implement proactively.
-        if rgrid[0] < 0.0:
-            log().error(f"Coil {self.name} grid for smooth self-field crossed r=0")
-            return None
-
-        return (rgrid, zgrid)
+    def grids(self) -> tuple[NDArray, NDArray]:
+        """Generate a grid that spans the winding pack, landing exactly on the windings if possible."""
+        return self.local_fields.grids
 
     @cached_property
-    def meshes(self) -> Optional[tuple[NDArray, NDArray]]:
-        """Generate a set of regular r,z meshes that span the coil winding pack centers exactly
-        if possible, or None if the winding pack can't be represented exactly.
-
-        Adds 4 grid cells of padding around the winding pack to deconflict the
-        cells with nonzero current density from the boundary conditions of a
-        flux solve.
-        """
-        grids = self.grids
-        if grids is not None:
-            rmesh, zmesh = np.meshgrid(*grids, indexing="ij")
-            return (rmesh, zmesh)  # Unpack and repack for pyright...
-        else:
-            return None
+    def meshes(self) -> tuple[NDArray, NDArray]:
+        """Generate a meshgrid that spans the winding pack, landing exactly on the windings if possible."""
+        return self.local_fields.meshes
 
     @cached_property
-    def local_fields(self) -> Optional[tuple[NDArray, NDArray, NDArray]]:
+    def local_fields(self) -> LocalFields:
         """
         Solve the local self-field flux and flux density per amp by mapping the
         coil section to a continuous current density distribution and solving the
@@ -152,59 +74,38 @@ class Coil:
         B-field from the flux field via 4th-order finite difference.
 
         Returns:
-            (psi, br, bz) [Wb/A, T/A, T/A] 2D arrays of poloidal flux and flux density per amp of coil current
+            Structure containing local field map components and interpolators
         """
-        grids = self.grids
-        meshes = self.meshes
-        if grids is not None and meshes is not None:
-            rgrid, zgrid = grids
-            rmesh, zmesh = meshes
-            dr = rgrid[1] - rgrid[0]  # [m]
-            dz = zgrid[1] - zgrid[0]  # [m]
-            area = dr * dz  # [m^2]
+        # Polygon section representation
+        # As a heuristic, treat each filament as a rectangle with side length that is
+        # half the smallest distance between two sequential filaments.
+        # These polygons are only used if the windings do not fall on a regular grid
+        # or are too close to r=0 to allow padding the grid to preserve boundary conditions.
+        drs = np.diff(self.rs)
+        dzs = np.diff(self.zs)
+        w = np.min(np.linalg.norm((drs, dzs), axis=0)) / 2
 
-            # Map current density per amp
-            jtor = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
-            for f in self.filaments:
-                # Get indices of location of this filament
-                ri = np.argmin(np.abs(rgrid - f.r))
-                zi = np.argmin(np.abs(zgrid - f.z))
-                # Set current density for that unit cell
-                # so that the total for the cell comes out to the
-                # correct total current
-                jtor[ri, zi] += f.n / area
+        polygons = [
+            Polygon.from_bounds(r - w / 2, z - w / 2, r + w / 2, z + w / 2)
+            for r, z in zip(self.rs, self.zs)
+        ]
 
-            # Solve flux field
-            psi = solve_flux_axisymmetric(grids, meshes, jtor)  # [Wb/A]
+        # Point-source representation
+        fil_rzn = (self.rs, self.zs, self.ns)
 
-            # Extract flux density
-            br, bz = calc_flux_density_from_flux(psi, rmesh, zmesh)  # [T/A]
-
-            return psi, br, bz
-
-        else:
-            return None
+        # Local field solve
+        return local_fields(fil_rzn, polygons)
 
     @cached_property
     def local_field_interpolators(
         self,
-    ) -> Optional[
-        tuple[MulticubicRectilinear, MulticubicRectilinear, MulticubicRectilinear]
-    ]:
+    ) -> tuple[MulticubicRegular, MulticubicRegular, MulticubicRegular]:
         """Build interpolators over the solved local fields, if available"""
-        grids = self.grids
-        local_fields = self.local_fields
-
-        if grids is not None and local_fields is not None:
-            psi, br, bz = local_fields
-            grids = [x for x in grids]
-            psi_interp = MulticubicRectilinear.new(grids, psi)
-            br_interp = MulticubicRectilinear.new(grids, br)
-            bz_interp = MulticubicRectilinear.new(grids, bz)
-
-            return psi_interp, br_interp, bz_interp
-        else:
-            return None
+        return (
+            self.local_fields.psi_per_amp_interpolator,
+            self.local_fields.br_per_amp_interpolator,
+            self.local_fields.bz_per_amp_interpolator,
+        )
 
     @cached_property
     def extent(self) -> tuple[float, float, float, float]:

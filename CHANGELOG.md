@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.0 - 2025-07-01
+
+### Added
+
+* Add `local` module with self-field flux and B-field calculations for coil winding packs
+* Add functionality for mapping coil winding packs on irregular grids (like VS coils) on to a regular grid for local field solve
+
+### Changed
+
+* !Return a more featured struct of data from coil self-field calcs instead of a tuple
+* !Return MulticubicRegular interpolators as coil field interpolators instead of MulticubicRectilinear
+* Make coil self-field calc return types non-optional since all non-error branches now produce a valid output
+
 ## 2.2.0 - 2025-06-26
 
 ### Changed
