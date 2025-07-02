@@ -226,17 +226,13 @@ def _allocate_current_irregular(
             # If the filament polygon is not well-behaved, we can end up with more
             # than one distinct overlapping region.
             intersection = fp.intersection(mp)
-            overlap_area = 0.0
             if isinstance(intersection, Polygon):
                 # Simple intersection
                 overlap_area = intersection.area
-            elif isinstance(intersection, GeometryCollection) or isinstance(
-                intersection, MultiPolygon
-            ):
+            elif isinstance(intersection, (GeometryCollection, MultiPolygon)):
                 # Non-simple intersection
-                for x in intersection.geoms:
-                    if isinstance(x, Polygon):
-                        overlap_area += x.area
+                g = intersection.geoms
+                overlap_area = sum([x.area for x in g if isinstance(x, Polygon)])
 
             # Add contribution to this grid cell from this filament
             itor_per_amp[i] += n * overlap_area / fp.area
