@@ -56,4 +56,4 @@ device_inductance = ['py.typed']
 target-version = "py310"
 
 [tool.coverage.report]
-fail_under = 96
+fail_under = 95

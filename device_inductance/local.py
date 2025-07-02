@@ -233,6 +233,8 @@ def _allocate_current_irregular(
                 # Non-simple intersection
                 g = intersection.geoms
                 overlap_area = sum([x.area for x in g if isinstance(x, Polygon)])
+            else:
+                raise TypeError(f"Unexpected intersection result: {intersection}")
 
             # Add contribution to this grid cell from this filament
             itor_per_amp[i] += n * overlap_area / fp.area
