@@ -230,6 +230,8 @@ def _allocate_current_irregular(
     itor_per_amp = itor_per_amp.reshape(rmesh.shape)
 
     # Shift the centroid of the current map to match the centroid of the filaments
+    # Otherwise, there will be a slight discontinuity between the local field map and the
+    # far-field values calculated from direct filament functions.
     rcfil = np.sum(rs * ns) / total_turns  # [m]
     zcfil = np.sum(zs * ns) / total_turns
     fil_centroid = np.array((rcfil, zcfil))
