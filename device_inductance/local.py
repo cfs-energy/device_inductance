@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 
 from pytest import approx
 
-from shapely import Polygon
+from shapely import Polygon, GeometryCollection, MultiPolygon
 
 from interpn import MulticubicRegular
 
@@ -222,9 +222,24 @@ def _allocate_current_irregular(
     for i in range(len(itor_per_amp)):
         mp = mesh_polygons[i]
         for n, fp in zip(ns, fil_polygons):
+            # Find overlapping area between this filament and this grid cell.
+            # If the filament polygon is not well-behaved, we can end up with more
+            # than one distinct overlapping region.
             intersection = fp.intersection(mp)
+            overlap_area = 0.0
             if isinstance(intersection, Polygon):
-                itor_per_amp[i] += n * intersection.area / fp.area
+                # Simple intersection
+                overlap_area = intersection.area
+            elif isinstance(intersection, GeometryCollection) or isinstance(
+                intersection, MultiPolygon
+            ):
+                # Non-simple intersection
+                for x in intersection.geoms:
+                    if isinstance(x, Polygon):
+                        overlap_area += x.area
+
+            # Add contribution to this grid cell from this filament
+            itor_per_amp[i] += n * overlap_area / fp.area
 
     assert np.sum(itor_per_amp) == approx(total_turns, rel=1e-6, abs=1e-6)
     itor_per_amp = itor_per_amp.reshape(rmesh.shape)
