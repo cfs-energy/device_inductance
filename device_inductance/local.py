@@ -242,8 +242,14 @@ def _allocate_current_irregular(
         nr, nz = v.shape
 
         # Make linear basis functions about the center of the array
-        rbasis = rshift * (np.array(range(nr), dtype=float) - (nr / 2)) / (nr / 2)
-        zbasis = zshift * (np.array(range(nz), dtype=float) - (nz / 2)) / (nz / 2)
+        rinds = np.array(range(nr), dtype=float)  # Indices as coordinate
+        zinds = np.array(range(nz), dtype=float)
+        rmid = (nr - 1) / 2  # Normalization factor to map coordinates to [-1, 1]
+        zmid = (nz - 1) / 2
+        rcoord = (rinds - rmid) / rmid  # Normalized array coordinates
+        zcoord = (zinds - zmid) / zmid
+        rbasis = rshift * rcoord  # Shift basis functions
+        zbasis = zshift * zcoord
 
         # Broadcast shift bases
         vshifted = v + v * rbasis.reshape(nr, 1) + v * zbasis.reshape(1, nz)
