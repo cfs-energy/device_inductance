@@ -310,8 +310,8 @@ def _allocate_current_regular(
     jtor_per_amp = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
     for r, z, n in zip(*fil_rzn):
         # Get indices of location of this filament
-        ri = int((r - np.min(rgrid)) / dr)
-        zi = int((z - np.min(zgrid)) / dz)
+        ri = int((r - rgrid[0]) / dr)
+        zi = int((z - zgrid[0]) / dz)
         # Set current density for that unit cell
         # so that the total for the cell comes out to the
         # correct total current
