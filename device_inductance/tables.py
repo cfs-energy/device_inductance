@@ -201,7 +201,7 @@ def _calc_structure_flux_density_tables(
         )  # [T/A]
 
         # Figure out what part we're replacing relative to each filament
-        for r, z in zip(rfil, zfil, strict=False):
+        for r, z in zip(rfil, zfil, strict=True):
             dist = ((rmesh - r) ** 2 + (zmesh - z) ** 2) ** 0.5  # [m]
             inds = np.where(dist < _MIN_DIST)
 

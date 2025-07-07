@@ -84,7 +84,7 @@ class Coil:
 
         polygons = [
             Polygon.from_bounds(r - w / 2, z - w / 2, r + w / 2, z + w / 2)
-            for r, z in zip(self.rs, self.zs, strict=False)
+            for r, z in zip(self.rs, self.zs, strict=True)
         ]
 
         # Point-source representation

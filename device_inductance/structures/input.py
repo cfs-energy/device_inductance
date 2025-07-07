@@ -39,7 +39,7 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
             resistivity = wall_elem["resistivity"]  # [ohm-m]
             rs = wall_elem["outline.r"]  # [m]
             zs = wall_elem["outline.z"]  # [m]
-            polygon = Polygon([x for x in zip(rs, zs, strict=False)])
+            polygon = Polygon([x for x in zip(rs, zs, strict=True)])
 
             structure_inputs.append(PassiveStructureInput(name, polygon, resistivity))
 
@@ -50,7 +50,7 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
         rs = passive_elem["element.0.geometry.outline.r"]
         zs = passive_elem["element.0.geometry.outline.z"]
         resistivity = passive_elem["resistivity"]
-        polygon = Polygon([x for x in zip(rs, zs, strict=False)])
+        polygon = Polygon([x for x in zip(rs, zs, strict=True)])
 
         structure_inputs.append(PassiveStructureInput(name, polygon, resistivity))
 

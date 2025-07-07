@@ -36,10 +36,10 @@ class RadialSlicer:
         pie_angles = np.linspace(0.0, 2.0 * np.pi, n_slices + 1)
         pie_r = rmid + pie_radius * np.cos(pie_angles)
         pie_z = zmid + pie_radius * np.sin(pie_angles)
-        pie_rz = [x for x in zip(pie_r, pie_z, strict=False)]
+        pie_rz = [x for x in zip(pie_r, pie_z, strict=True)]
         mids = [(rmid, zmid)] * n_slices
         #  Sections start at the midpoint, go to two points on the circle, then end back at the midpoint
-        pie_sections = zip(mids, pie_rz[:-1], pie_rz[1:], mids, strict=False)
+        pie_sections = zip(mids, pie_rz[:-1], pie_rz[1:], mids, strict=True)
         pie_slices = [Polygon(s) for s in pie_sections]
 
         self.polygons = pie_slices

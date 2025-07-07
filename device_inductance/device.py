@@ -244,7 +244,7 @@ class DeviceInductance:
         # This one is pretty quick, doesn't need its own file
         limiter_path_r = self.ods["wall.description_2d.0.limiter.unit.0.outline.r"]
         limiter_path_z = self.ods["wall.description_2d.0.limiter.unit.0.outline.z"]
-        return Polygon(zip(limiter_path_r, limiter_path_z, strict=False))
+        return Polygon(zip(limiter_path_r, limiter_path_z, strict=True))
 
     @cached_property
     def poloidal_field_probes(self) -> list[PoloidalFieldProbe]:

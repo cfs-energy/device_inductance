@@ -201,7 +201,7 @@ def _allocate_current_irregular(
         """Rectangular polygon representing a mesh cell"""
         return Polygon.from_bounds(r - dr / 2, z - dz / 2, r + dr / 2, z + dz / 2)
 
-    mesh_polygons = [cell_to_poly(r, z) for r, z in zip(rmesh.flatten(), zmesh.flatten(), strict=False)]
+    mesh_polygons = [cell_to_poly(r, z) for r, z in zip(rmesh.flatten(), zmesh.flatten(), strict=True)]
 
     # For each filament polygon, find the fraction of its area
     # that falls in each mesh cell polygon.
@@ -210,7 +210,7 @@ def _allocate_current_irregular(
     itor_per_amp = np.zeros_like(rmesh.flatten())
     for i in range(len(itor_per_amp)):
         mp = mesh_polygons[i]
-        for n, fp in zip(ns, fil_polygons, strict=False):
+        for n, fp in zip(ns, fil_polygons, strict=True):
             # Find overlapping area between this filament and this grid cell.
             # If the filament polygon is not well-behaved, we can end up with more
             # than one distinct overlapping region.
@@ -295,7 +295,7 @@ def _allocate_current_regular(
 
     # Map current density per amp
     jtor_per_amp = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
-    for r, z, n in zip(*fil_rzn, strict=False):
+    for r, z, n in zip(*fil_rzn, strict=True):
         # Get indices of location of this filament
         ri = np.argmin(np.abs(rgrid - r))
         zi = np.argmin(np.abs(zgrid - z))
