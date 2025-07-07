@@ -1,14 +1,13 @@
 from itertools import product
 
 import numpy as np
+from cfsem import flux_circular_filament, mutual_inductance_of_cylindrical_coils
 from numpy.typing import NDArray
 
-from device_inductance.coils import Coil
 from device_inductance.circuits import CoilSeriesCircuit
+from device_inductance.coils import Coil
 from device_inductance.structures import PassiveStructureLoop
 from device_inductance.utils import _progressbar
-
-from cfsem import mutual_inductance_of_cylindrical_coils, flux_circular_filament
 
 
 def _calc_coil_mutual_inductances(coils: list[Coil], show_prog: bool = True) -> NDArray:
@@ -112,9 +111,7 @@ def _calc_circuit_mutual_inductances(
         for j, circj in enumerate(circuits):
             # This procedure works for both self- and mutual- terms
             jcoilinds = [c[0] for c in circj.coils]
-            m[i, j] = np.sum(
-                mcc_signed[icoilinds, :][:, jcoilinds]
-            )  # slice rows then cols
+            m[i, j] = np.sum(mcc_signed[icoilinds, :][:, jcoilinds])  # slice rows then cols
             m[j, i] = m[i, j]
 
     return m  # [H]

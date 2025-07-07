@@ -4,23 +4,18 @@ that do not necessarily fall on a rectangular grid by allocating the fraction of
 intersecting polygon area to each mesh cell.
 """
 
-from itertools import chain
 from dataclasses import dataclass
+from itertools import chain
 
 import numpy as np
-from numpy.typing import NDArray
-
-from pytest import approx
-
-from shapely import Polygon, GeometryCollection, MultiPolygon
-
 from interpn import MulticubicRegular
-
+from numpy.typing import NDArray
+from pytest import approx
 from scipy.optimize import fsolve
+from shapely import GeometryCollection, MultiPolygon, Polygon
 
 from device_inductance.logging import log
-from device_inductance.utils import solve_flux_axisymmetric, calc_flux_density_from_flux
-
+from device_inductance.utils import calc_flux_density_from_flux, solve_flux_axisymmetric
 
 RMIN = 2e-2
 """[m] minimum r-value to allow in local solver grid"""
@@ -64,9 +59,7 @@ class LocalFields:
     """[m] 2D computational meshgrids"""
 
 
-def local_fields(
-    fil_rzn: tuple[NDArray, NDArray, NDArray], polygons: list[Polygon]
-) -> LocalFields:
+def local_fields(fil_rzn: tuple[NDArray, NDArray, NDArray], polygons: list[Polygon]) -> LocalFields:
     """
     Estimate local self-field of a collection of filaments with polygon representations.
 
@@ -80,10 +73,9 @@ def local_fields(
     rs, zs, ns = fil_rzn
     grids_regular = _make_grids_regular(rs, zs)
 
-    if grids_regular is not None:  # The filaments land on a regular grid
-        grids = grids_regular
-    else:  # The filaments do not land on any regular grid
-        grids = _make_grids_irregular(polygons)
+    # If the winding pack lands on a regular grid, use the corresponding regular grid.
+    # Otherwise, fall back on a heuristic grid that spans the winding pack.
+    grids = grids_regular or _make_grids_irregular(polygons)
 
     meshes = _make_mesh(grids)
     dr = grids[0][1] - grids[0][0]
@@ -103,15 +95,9 @@ def local_fields(
     dims = [len(grids[0]), len(grids[1])]
     starts = np.array([grids[0][0], grids[1][0]])
     steps = np.array(dxgrid)
-    psi_per_amp_interpolator = MulticubicRegular.new(
-        dims, starts, steps, psi_per_amp.flatten()
-    )
-    br_per_amp_interpolator = MulticubicRegular.new(
-        dims, starts, steps, br_per_amp.flatten()
-    )
-    bz_per_amp_interpolator = MulticubicRegular.new(
-        dims, starts, steps, bz_per_amp.flatten()
-    )
+    psi_per_amp_interpolator = MulticubicRegular.new(dims, starts, steps, psi_per_amp.flatten())
+    br_per_amp_interpolator = MulticubicRegular.new(dims, starts, steps, br_per_amp.flatten())
+    bz_per_amp_interpolator = MulticubicRegular.new(dims, starts, steps, bz_per_amp.flatten())
 
     # Pack numerous outputs into a struct
     result = LocalFields(
@@ -142,12 +128,14 @@ def _filament_extent(polygons: list[Polygon]) -> tuple[float, float, float, floa
 
 
 def _make_grids_irregular(polygons: list[Polygon]) -> tuple[NDArray, NDArray]:
-    """Make grids that bound the filament extent plus at least 7 cells outside to support a 4th order difference method."""
+    """Make grids that bound the filament extent
+    plus at least 7 cells outside to support a 4th order difference method."""
     rmin, rmax, zmin, zmax = _filament_extent(polygons)
 
     if rmin < 0.0:
         raise ValueError(
-            f"Minimum r-coordinate of a filament is <{RMIN} [m], which does not leave enough room to set boundary conditions."
+            f"Minimum r-coordinate of a filament is <{RMIN} [m],"
+            " which does not leave enough room to set boundary conditions."
         )
     if rmin < RMIN:
         log().warning(
@@ -183,7 +171,8 @@ def _make_grids_irregular(polygons: list[Polygon]) -> tuple[NDArray, NDArray]:
     nr, nz = len(rgrid), len(zgrid)
     if nz > 100 or nz > 100:
         log().warning(
-            f"Using an excessively large mesh ({nr} X {nz}) to represent filament local flux solve due to proximity to R=0."
+            f"Using an excessively large mesh ({nr} X {nz}) "
+            "to represent filament local flux solve due to proximity to R=0."
         )
 
     return rgrid, zgrid
@@ -200,7 +189,8 @@ def _allocate_current_irregular(
     meshes: tuple[NDArray, NDArray],
     dxgrid: tuple[float, float],
 ) -> NDArray:
-    """Convert a collection of filaments with polygon representations to a jtor array mapped on to the meshes."""
+    """Convert a collection of filaments with polygon
+    representations to a jtor array mapped on to the meshes."""
     rs, zs, ns = fil_rzn
     total_turns = np.sum(ns)
     dr, dz = dxgrid
@@ -211,17 +201,16 @@ def _allocate_current_irregular(
         """Rectangular polygon representing a mesh cell"""
         return Polygon.from_bounds(r - dr / 2, z - dz / 2, r + dr / 2, z + dz / 2)
 
-    mesh_polygons = [
-        cell_to_poly(r, z) for r, z in zip(rmesh.flatten(), zmesh.flatten())
-    ]
+    mesh_polygons = [cell_to_poly(r, z) for r, z in zip(rmesh.flatten(), zmesh.flatten(), strict=False)]
 
     # For each filament polygon, find the fraction of its area
     # that falls in each mesh cell polygon.
-    # The fraction of the total area assigned to each filament should be already accounted in the `n` for the filament.
+    # The fraction of the total area assigned to each filament
+    # should be already accounted in the `n` for the filament.
     itor_per_amp = np.zeros_like(rmesh.flatten())
     for i in range(len(itor_per_amp)):
         mp = mesh_polygons[i]
-        for n, fp in zip(ns, fil_polygons):
+        for n, fp in zip(ns, fil_polygons, strict=False):
             # Find overlapping area between this filament and this grid cell.
             # If the filament polygon is not well-behaved, we can end up with more
             # than one distinct overlapping region.
@@ -229,7 +218,7 @@ def _allocate_current_irregular(
             if isinstance(intersection, Polygon):
                 # Simple intersection
                 overlap_area = intersection.area
-            elif isinstance(intersection, (GeometryCollection, MultiPolygon)):
+            elif isinstance(intersection, GeometryCollection | MultiPolygon):
                 # Non-simple intersection
                 g = intersection.geoms
                 overlap_area = sum([x.area for x in g if isinstance(x, Polygon)])
@@ -306,7 +295,7 @@ def _allocate_current_regular(
 
     # Map current density per amp
     jtor_per_amp = np.zeros_like(meshes[0])  # [A-turns/m^2 / A]
-    for r, z, n in zip(*fil_rzn):
+    for r, z, n in zip(*fil_rzn, strict=False):
         # Get indices of location of this filament
         ri = np.argmin(np.abs(rgrid - r))
         zi = np.argmin(np.abs(zgrid - z))

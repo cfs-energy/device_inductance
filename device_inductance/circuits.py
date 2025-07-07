@@ -45,9 +45,9 @@ def _extract_circuits(description: ODS) -> list[CoilSeriesCircuit]:
     conn0_shape = description["pf_active.circuit.0"]["connections"].shape
     nsupplies = int(conn0_shape[1] / 2 - ncoils)
     ncomponents = ncoils + nsupplies
-    assert (
-        2 * (ncomponents) == conn0_shape[1]
-    ), "Connection sides must have even dimension and match number of components"
+    assert 2 * (ncomponents) == conn0_shape[1], (
+        "Connection sides must have even dimension and match number of components"
+    )
 
     # For each circuit in the ODS, figure out what coils are connected
     # and in what orientation
@@ -66,20 +66,18 @@ def _extract_circuits(description: ODS) -> list[CoilSeriesCircuit]:
         # This means every "side" should be attached to no more than
         # 1 node, so we can just check the maximum value of the sum of nodes
         # connected to sides.
-        assert (
-            max(np.sum(connections, axis=0)) < 2
-        ), f"Circuit {ods_circuit} contains parallel paths"
+        assert max(np.sum(connections, axis=0)) < 2, f"Circuit {ods_circuit} contains parallel paths"
 
         # We could still have parallel paths if there are two disjoint circuits
         # represented. To check that, we can make sure there is only one power supply
         # involved in the circuit
-        assert (
-            np.sum(in_connections[:, :nsupplies].flatten()) == 1
-        ), f"Circuit {ods_circuit} uses multiple or zero power supplies"
+        assert np.sum(in_connections[:, :nsupplies].flatten()) == 1, (
+            f"Circuit {ods_circuit} uses multiple or zero power supplies"
+        )
 
-        assert (
-            np.sum(out_connections[:, :nsupplies].flatten()) == 1
-        ), f"Circuit {ods_circuit} uses multiple or zero power supplies"
+        assert np.sum(out_connections[:, :nsupplies].flatten()) == 1, (
+            f"Circuit {ods_circuit} uses multiple or zero power supplies"
+        )
 
         # Now that we know there are no parallel paths, we're interested in
         # which things are connected in series, and in what order.
@@ -92,9 +90,13 @@ def _extract_circuits(description: ODS) -> list[CoilSeriesCircuit]:
         coils = []
 
         # For each node, see what coil is attached to it
-        # and which side is attached. There will only be one
-        # coil
-        def get_next_coil(node):
+        # and which side is attached.
+        def get_next_coil(
+            node,
+            coils=coils,
+            coil_in_connections=coil_in_connections,
+            coil_out_connections=coil_out_connections,
+        ):
             # Get the next unvisited coil attached to a given node, and its sign orientation
             visited_coil_indices = [x[0] for x in coils]
             inc = [
@@ -121,7 +123,9 @@ def _extract_circuits(description: ODS) -> list[CoilSeriesCircuit]:
                     "imply parallel system or open circuit"
                 )
 
-        def get_next_node(coil, sign):
+        def get_next_node(
+            coil, sign, coil_in_connections=coil_in_connections, coil_out_connections=coil_out_connections
+        ):
             if sign == 1.0:
                 return np.argwhere(coil_out_connections[:, coil] == 1)[0][0]
             elif sign == -1.0:
@@ -138,19 +142,13 @@ def _extract_circuits(description: ODS) -> list[CoilSeriesCircuit]:
             node = get_next_node(coil, sign)
             i += 1
 
-        circuit = CoilSeriesCircuit(
-            name=name, coils=coils, supply=ps_index
-        )  # Initialize output
+        circuit = CoilSeriesCircuit(name=name, coils=coils, supply=ps_index)  # Initialize output
         circuits.append(circuit)
 
     # Make sure all coils are represented exactly once
-    all_coils_in_circuits = sum(
-        [[c[0] for c in circuit.coils] for circuit in circuits], start=[]
-    )
+    all_coils_in_circuits = sum([[c[0] for c in circuit.coils] for circuit in circuits], start=[])
     for i in range(ncoils):
         assert i in all_coils_in_circuits, f"Coil {i} missing from circuits"
-    assert (
-        len(list(set(all_coils_in_circuits))) == ncoils
-    ), "Extra coils or missing coils in circuits"
+    assert len(list(set(all_coils_in_circuits))) == ncoils, "Extra coils or missing coils in circuits"
 
     return circuits

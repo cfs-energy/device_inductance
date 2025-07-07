@@ -1,20 +1,18 @@
 """Calculation of forces between current-carrying conductors"""
 
 import numpy as np
+from cfsem import (
+    body_force_density_circular_filament_cartesian,
+    flux_density_circular_filament,
+)
+from interpn import MulticubicRectilinear
 from numpy.typing import NDArray
 
-from device_inductance.coils import Coil
-from device_inductance.structures import PassiveStructureLoop
 from device_inductance.circuits import CoilSeriesCircuit
-from device_inductance.utils import _progressbar, calc_flux_density_from_flux
+from device_inductance.coils import Coil
 from device_inductance.logging import log
-
-from cfsem import (
-    flux_density_circular_filament,
-    body_force_density_circular_filament_cartesian,
-)
-
-from interpn import MulticubicRectilinear
+from device_inductance.structures import PassiveStructureLoop
+from device_inductance.utils import _progressbar, calc_flux_density_from_flux
 
 
 def _calc_coil_coil_forces(
@@ -31,11 +29,7 @@ def _calc_coil_coil_forces(
     # Calculate force per amp from each coil `i` to each coil `j`
     # using the baked tables, which include the self-field solve patch
     # when it is available (for coils that fall on a regular grid)
-    items = (
-        _progressbar([x for x in range(ncoils)], "Coil-coil force rows")
-        if show_prog
-        else range(ncoils)
-    )
+    items = _progressbar([x for x in range(ncoils)], "Coil-coil force rows") if show_prog else range(ncoils)
     for i in items:
         bz = coil_flux_density_tables[1][i, :, :]
         bz_interp = MulticubicRectilinear.new(gridlist, bz)
@@ -43,7 +37,8 @@ def _calc_coil_coil_forces(
             if i == j and coils[i].local_fields is None:
                 # If we can't make a sane self-field estimate, skip and issue a warning
                 log().warning(
-                    f"Skipping self-force contribution for coil {coils[i].name} due to lack of smooth local field approximation"
+                    f"Skipping self-force contribution for coil {coils[i].name} "
+                    "due to lack of smooth local field approximation"
                 )
                 continue
             elif i == j:
@@ -57,9 +52,7 @@ def _calc_coil_coil_forces(
                     coils[j].zs,
                 ]  # [m] observation points (filament locations)
                 fr[i][j] = np.sum(length_factor * bz_interp.eval(obs))
-                fz[i][j] = (
-                    0.0  # No self-propulsion; interpolation would produce slightly nonzero value
-                )
+                fz[i][j] = 0.0  # No self-propulsion; interpolation would produce slightly nonzero value
             else:
                 # If these are two separate coils, we can use a full IxB calc
                 # which is slower but more accurate than interpolation
@@ -72,14 +65,12 @@ def _calc_coil_coil_forces(
                 zero = np.zeros_like(rb)
                 # Replacing J with I*dL gives body force instead of body force density
                 # and we can use the full circular length to scale the I*dL product in the toroidal direction
-                fab_jxb_r, fab_jxb_y, fab_jxb_z = (
-                    body_force_density_circular_filament_cartesian(
-                        na,
-                        ra,
-                        za,
-                        obs=(rb, zero, zb),
-                        j=(zero, 2.0 * np.pi * rb * nb, zero),
-                    )
+                fab_jxb_r, fab_jxb_y, fab_jxb_z = body_force_density_circular_filament_cartesian(
+                    na,
+                    ra,
+                    za,
+                    obs=(rb, zero, zb),
+                    j=(zero, 2.0 * np.pi * rb * nb, zero),
                 )  # [N/A^2]
                 assert sum(fab_jxb_y) == 0.0  # Sanity check
                 # Sum contributions at each filament
@@ -101,16 +92,13 @@ def _calc_circuit_coil_forces(
     fz = np.zeros((ncirc, ncoils))
 
     # Calculate force per amp from each circuit `i` to each coil `j` using coil-coil force tables
-    items = (
-        _progressbar([x for x in range(ncirc)], "Circuit-coil force rows")
-        if show_prog
-        else range(ncirc)
-    )
+    items = _progressbar([x for x in range(ncirc)], "Circuit-coil force rows") if show_prog else range(ncirc)
     for i in items:
         for j, sign in circuits[i].coils:
             # For each coil in the circuit, add the signed force from that coil
             # on each of the others.
-            # If any coils do not have self-force estimates, that will be handled earlier in the coil-coil force tables.
+            # If any coils do not have self-force estimates,
+            # that will be handled earlier in the coil-coil force tables.
             fr[i, :] += sign * coil_coil_forces[0][j, :]
             fz[i, :] += sign * coil_coil_forces[1][j, :]
 
@@ -127,11 +115,7 @@ def _calc_structure_coil_forces(
 
     fr = np.zeros((nstruct, ncoils))  # [N/A^2]
     fz = np.zeros((nstruct, ncoils))
-    items = (
-        _progressbar(structures, "Structure-coil force rows")
-        if show_prog
-        else structures
-    )
+    items = _progressbar(structures, "Structure-coil force rows") if show_prog else structures
     for i, s in enumerate(items):
         ifil = s.ns  # [dimensionless] unit reference current for normalization times number of turns
         rfil = s.rs  # [m]
@@ -179,16 +163,12 @@ def _calc_plasma_coil_forces(
         # We're using the full tables
         plasma_flux_tables = plasma_flux_tables_or_limiter_mask
         items = (
-            _progressbar(
-                [x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr
-            )
+            _progressbar([x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr)
             if show_prog
             else range(nrnz)
         )
         for i in items:
-            br, bz = calc_flux_density_from_flux(
-                plasma_flux_tables[i, :, :], *meshes
-            )  # [T/A]
+            br, bz = calc_flux_density_from_flux(plasma_flux_tables[i, :, :], *meshes)  # [T/A]
             br_interp = MulticubicRectilinear.new(gridlist, br)  # [T/A] vs. [m]
             bz_interp = MulticubicRectilinear.new(gridlist, bz)
 
@@ -206,9 +186,7 @@ def _calc_plasma_coil_forces(
         # visiting only the points on the interior of the limiter and leaving the others as zeroes
         limiter_mask = plasma_flux_tables_or_limiter_mask.flatten()
         items = (
-            _progressbar(
-                [x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr
-            )
+            _progressbar([x for x in range(nrnz)], "Mesh cell-coil force rows", show_every=nr)
             if show_prog
             else range(nrnz)
         )

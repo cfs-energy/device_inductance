@@ -6,8 +6,8 @@ from shapely import Polygon
 from device_inductance.utils import _progressbar
 
 from .input import _collect_structures
-from .slicer import RadialSlicer
 from .loop import PassiveStructureLoop
+from .slicer import RadialSlicer
 
 
 def _extract_structures(

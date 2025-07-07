@@ -1,17 +1,22 @@
 from importlib.metadata import metadata
-from typing import Literal
 from pathlib import Path
+from typing import Literal
 
 __version__ = metadata(str(__package__))["Version"]
 
 from omas import ODS, load_omas_json
 
-from device_inductance import model_reduction, contour, sensors, logging, mesh, structures
-from device_inductance.device import DeviceInductance, TypicalOutputs
+from device_inductance import contour, logging, mesh, model_reduction, sensors, structures
 from device_inductance.coils import Coil, CoilFilament
-from device_inductance.structures import PassiveStructureLoop
+from device_inductance.device import DeviceInductance, TypicalOutputs
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
-from device_inductance.utils import calc_flux_density_from_flux, gradient_order4, flux_solver, solve_flux_axisymmetric
+from device_inductance.structures import PassiveStructureLoop
+from device_inductance.utils import (
+    calc_flux_density_from_flux,
+    flux_solver,
+    gradient_order4,
+    solve_flux_axisymmetric,
+)
 
 
 def load_default_ods() -> ODS:
@@ -36,9 +41,7 @@ The example differs from real SPARC configurations in at least the following way
                   """)
 
     # NOTE: This should be rewritten to use importlib once omas supports loading raw text
-    ods_filename = (
-        Path(__file__).parent / "../examples/OS_SPARC_Device_Description.json"
-    )
+    ods_filename = Path(__file__).parent / "../examples/OS_SPARC_Device_Description.json"
     with open(ods_filename) as f:
         ods = load_omas_json(f)
 
@@ -151,7 +154,6 @@ __all__ = [
     "gradient_order4",
     "flux_solver",
     "solve_flux_axisymmetric",
-
     "logging",
     "model_reduction",
     "contour",

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from omas import ODS
 from shapely import Polygon
 
@@ -38,7 +39,7 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
             resistivity = wall_elem["resistivity"]  # [ohm-m]
             rs = wall_elem["outline.r"]  # [m]
             zs = wall_elem["outline.z"]  # [m]
-            polygon = Polygon([x for x in zip(rs, zs)])
+            polygon = Polygon([x for x in zip(rs, zs, strict=False)])
 
             structure_inputs.append(PassiveStructureInput(name, polygon, resistivity))
 
@@ -49,7 +50,7 @@ def _collect_structures(description: ODS) -> list[PassiveStructureInput]:
         rs = passive_elem["element.0.geometry.outline.r"]
         zs = passive_elem["element.0.geometry.outline.z"]
         resistivity = passive_elem["resistivity"]
-        polygon = Polygon([x for x in zip(rs, zs)])
+        polygon = Polygon([x for x in zip(rs, zs, strict=False)])
 
         structure_inputs.append(PassiveStructureInput(name, polygon, resistivity))
 

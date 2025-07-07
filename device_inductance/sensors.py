@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from warnings import warn
 from functools import cached_property
 
 import numpy as np
-from numpy.typing import NDArray
-
 from interpn import MulticubicRectilinear
-
+from numpy.typing import NDArray
 from omas import ODS
+
+from .logging import log
 
 
 @dataclass(frozen=True)
@@ -46,9 +45,7 @@ class PoloidalFieldProbe:
 
         return np.atleast_1d(np.array((r, z)))
 
-    def response(
-        self, grids: tuple[NDArray, NDArray], br: NDArray, bz: NDArray
-    ) -> float:
+    def response(self, grids: tuple[NDArray, NDArray], br: NDArray, bz: NDArray) -> float:
         """Ideal integrated response to a given local B-field.  This is the sum of local B-field
         components, not the normed field!
 
@@ -257,18 +254,14 @@ class PartialFluxLoop:
         dz = self.z1 - self.z0  # [m]
         norm = (dr**2 + dz**2) ** 0.5  # [m] length of cross-section
         length_per_segment = norm / float(self.n_discretization)  # [m]
-        weights = np.linspace(0.0, 1.0, self.n_discretization + 2, endpoint=True)[
-            1:-1
-        ]  # [dimensionless]
+        weights = np.linspace(0.0, 1.0, self.n_discretization + 2, endpoint=True)[1:-1]  # [dimensionless]
         rs = self.r0 + dr * weights  # [m]
         zs = self.z0 + dz * weights  # [m]
         das = 2.0 * np.pi * rs * length_per_segment * self.loop_frac  # [m^2]
 
         return rs, zs, das  # [m],[m] sampled points, [m^2] projected area at each point
 
-    def response(
-        self, grids: tuple[NDArray, NDArray], br: NDArray, bz: NDArray
-    ) -> float:
+    def response(self, grids: tuple[NDArray, NDArray], br: NDArray, bz: NDArray) -> float:
         """Ideal integrated response to a given local B-field
 
         Args:
@@ -394,7 +387,7 @@ def _extract_poloidal_field_probes(description: ODS) -> list[PoloidalFieldProbe]
     for ods_bp in ods_bps.values():
         bp_type_number = ods_bp["type.index"]
         if bp_type_number != 2:  # Type 2 is Mirnov probe
-            warn(
+            log().warning(
                 f"Encountered unimplemented poloidal field probe of type {bp_type_number}; skipping"
             )
             continue

@@ -6,11 +6,9 @@ Among other uses, this contour is needed in order to estimate the plasma's
 self-inductance.
 """
 
-from typing import Optional
-
 import numpy as np
-from numpy.typing import NDArray
 from interpn import MulticubicRectilinear, MultilinearRectilinear
+from numpy.typing import NDArray
 from scipy.optimize import minimize
 
 from device_inductance.logging import log
@@ -25,7 +23,7 @@ def trace_contour(
     mask_limiter: NDArray,
     ds: float = 1e-2,
     tol: float = 1e-4,
-) -> Optional[tuple[NDArray, NDArray]]:
+) -> tuple[NDArray, NDArray] | None:
     """
     Specialized contour-tracing algo for finding the last closed flux contour
     defining the edge of a tokamak plasma.
@@ -81,12 +79,8 @@ def trace_contour(
         return psi_interpolator.eval(pt)[0]
 
     def grad_psi(r, z, eps=1e-6) -> NDArray:
-        dpsi_dr = (psi_interp_point(r + eps, z) - psi_interp_point(r - eps, z)) / (
-            2.0 * eps
-        )
-        dpsi_dz = (psi_interp_point(r, z + eps) - psi_interp_point(r, z - eps)) / (
-            2.0 * eps
-        )
+        dpsi_dr = (psi_interp_point(r + eps, z) - psi_interp_point(r - eps, z)) / (2.0 * eps)
+        dpsi_dz = (psi_interp_point(r, z + eps) - psi_interp_point(r, z - eps)) / (2.0 * eps)
         return np.array((dpsi_dr, dpsi_dz))
 
     # Initialize

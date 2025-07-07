@@ -1,64 +1,62 @@
 from __future__ import annotations
 
-from typing import Literal, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
+from typing import Literal
 
 import numpy as np
-from numpy.typing import NDArray
-
 from cfsem import (
     self_inductance_distributed_axisymmetric_conductor,
 )
-
+from numpy.typing import NDArray
 from omas import ODS
+from shapely import Point, Polygon
 
-from shapely import Polygon, Point
-
-from device_inductance.structures import PassiveStructureLoop, _extract_structures
-from device_inductance.coils import Coil, _extract_coils
+from device_inductance import model_reduction
 from device_inductance.circuits import CoilSeriesCircuit, _extract_circuits
+from device_inductance.coils import Coil, _extract_coils
+from device_inductance.forces import (
+    _calc_circuit_coil_forces,
+    _calc_coil_coil_forces,
+    _calc_plasma_coil_forces,
+    _calc_structure_coil_forces,
+)
+from device_inductance.logging import log, logger_is_set_up, logger_setup_default
+from device_inductance.mutuals import (
+    _calc_circuit_mutual_inductances,
+    _calc_circuit_structure_mutual_inductances,
+    _calc_coil_mutual_inductances,
+    _calc_coil_structure_mutual_inductances,
+    _calc_structure_mutual_inductances,
+)
 from device_inductance.sensors import (
-    PoloidalFieldProbe,
     FullFluxLoop,
     PartialFluxLoop,
+    PoloidalFieldProbe,
     _extract_full_flux_loops,
     _extract_partial_flux_loops,
     _extract_poloidal_field_probes,
 )
-from device_inductance.mutuals import (
-    _calc_coil_mutual_inductances,
-    _calc_structure_mutual_inductances,
-    _calc_coil_structure_mutual_inductances,
-    _calc_circuit_mutual_inductances,
-    _calc_circuit_structure_mutual_inductances,
-)
+from device_inductance.structures import PassiveStructureLoop, _extract_structures
 from device_inductance.tables import (
-    _calc_coil_flux_tables,
-    _calc_coil_flux_density_tables,
-    _calc_structure_flux_tables,
-    _calc_structure_flux_density_tables,
-    _calc_structure_mode_flux_tables,
-    _calc_structure_mode_flux_density_tables,
-    _calc_mesh_flux_tables,
-    _calc_circuit_flux_tables,
     _calc_circuit_flux_density_tables,
-)
-from device_inductance.forces import (
-    _calc_coil_coil_forces,
-    _calc_circuit_coil_forces,
-    _calc_structure_coil_forces,
-    _calc_plasma_coil_forces,
+    _calc_circuit_flux_tables,
+    _calc_coil_flux_density_tables,
+    _calc_coil_flux_tables,
+    _calc_mesh_flux_tables,
+    _calc_structure_flux_density_tables,
+    _calc_structure_flux_tables,
+    _calc_structure_mode_flux_density_tables,
+    _calc_structure_mode_flux_tables,
 )
 from device_inductance.utils import (
+    _join_extents,
+    _pad_extent,
     calc_flux_density_from_flux,
     flux_solver,
     solve_flux_axisymmetric,
-    _join_extents,
-    _pad_extent,
 )
-from device_inductance import model_reduction
-from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 
 F64 = np.float64
 
@@ -110,9 +108,7 @@ class DeviceInductance:
         max_nmodes: int = 40,
         min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
         dxgrid: tuple[float, float] = (0.05, 0.05),
-        model_reduction_method: Literal[
-            "eigenmode", "stabilized eigenmode"
-        ] = "eigenmode",
+        model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
         plasma_coil_force_method: Literal["tables", "mask"] = "mask",
         n_radial_slices: int = 30,
         **kwargs,  # For backwards compatibility with `extent` kwarg only
@@ -130,15 +126,16 @@ class DeviceInductance:
             dxgrid: [m] spatial resolution of computational grid
             plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
                                       or do direct filament calculations from points inside the limiter mask.
-                                      Defaults to "mask", which is faster and uses less memory, but only includes
-                                      nonzero entries inside the limiter, which requires a valid limiter geometry.
-            n_radial_slices: Number of radial slices to use for chunking large structures. Each slice is centered
-                             at the limiter centroid.
+                                      Defaults to "mask", which is faster and uses less memory, but only
+                                      includes nonzero entries inside the limiter, which requires a valid
+                                      limiter geometry.
+            n_radial_slices: Number of radial slices to use for chunking large structures.
+                             Each slice is centered at the limiter centroid.
         """
         if not logger_is_set_up():
             logger_setup_default()
 
-        if "extent" in kwargs.keys():
+        if "extent" in kwargs:
             # Backwards compatibility with `extent` kwarg name only
             min_extent = kwargs.pop("extent")
 
@@ -179,9 +176,7 @@ class DeviceInductance:
 
         # Immutable after init, except for new cache entries
         def setattr_err(*_, **__):
-            raise NotImplementedError(
-                "DeviceInductance attributes are not intended to be mutated"
-            )
+            raise NotImplementedError("DeviceInductance attributes are not intended to be mutated")
 
         self.__setattr__ = setattr_err
 
@@ -249,7 +244,7 @@ class DeviceInductance:
         # This one is pretty quick, doesn't need its own file
         limiter_path_r = self.ods["wall.description_2d.0.limiter.unit.0.outline.r"]
         limiter_path_z = self.ods["wall.description_2d.0.limiter.unit.0.outline.z"]
-        return Polygon(zip(limiter_path_r, limiter_path_z))
+        return Polygon(zip(limiter_path_r, limiter_path_z, strict=False))
 
     @cached_property
     def poloidal_field_probes(self) -> list[PoloidalFieldProbe]:
@@ -400,16 +395,12 @@ class DeviceInductance:
     @cached_property
     def coil_structure_mutual_inductances(self) -> NDArray[F64]:
         """[H] (ncoil X nstruct) Coil-structure mutual inductance"""
-        return _calc_coil_structure_mutual_inductances(
-            self.coils, self.structures, self.show_prog
-        )
+        return _calc_coil_structure_mutual_inductances(self.coils, self.structures, self.show_prog)
 
     @cached_property
     def circuit_mutual_inductances(self) -> NDArray[F64]:
         """[H] with shape (ncirc X ncirc), Circuit-circuit mutual inductance"""
-        return _calc_circuit_mutual_inductances(
-            self.circuits, self.coil_mutual_inductances, self.show_prog
-        )
+        return _calc_circuit_mutual_inductances(self.circuits, self.coil_mutual_inductances, self.show_prog)
 
     @cached_property
     def circuit_structure_mutual_inductances(self) -> NDArray[F64]:
@@ -448,9 +439,7 @@ class DeviceInductance:
         r = np.zeros(self.n_circuits)
         # Sum the series resistance of the coils in the circuit
         for i in range(self.n_circuits):
-            r[i] = np.sum(
-                [self.coil_resistances[c[0], c[0]] for c in self.circuits[i].coils]
-            )
+            r[i] = np.sum([self.coil_resistances[c[0], c[0]] for c in self.circuits[i].coils])
         return np.diag(r)
 
     @cached_property
@@ -504,27 +493,25 @@ class DeviceInductance:
     @cached_property
     def circuit_flux_tables(self) -> NDArray[F64]:
         """[Wb/A] with shape (ncirc X nr X nz), Circuit flux tables"""
-        return _calc_circuit_flux_tables(
-            self.circuits, self.coil_flux_tables, self.show_prog
-        )
+        return _calc_circuit_flux_tables(self.circuits, self.coil_flux_tables, self.show_prog)
 
     @cached_property
     def coil_flux_density_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
         """[T/A] with shape (ncoils X nr X nz), Coil flux density (B-field) tables, r- and z- components"""
-        return _calc_coil_flux_density_tables(
-            self.coils, self.meshes, self.coil_flux_tables, self.show_prog
-        )
+        return _calc_coil_flux_density_tables(self.coils, self.meshes, self.coil_flux_tables, self.show_prog)
 
     @cached_property
     def structure_flux_density_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[T/A] with shape (nstruct X nr X nz), Structure flux density (B-field) tables, r- and z- components"""
+        """[T/A] with shape (nstruct X nr X nz),
+        Structure flux density (B-field) tables, r- and z- components"""
         return _calc_structure_flux_density_tables(
             self.structures, self.meshes, self.structure_flux_tables, self.show_prog
         )
 
     @cached_property
     def structure_mode_flux_density_tables(self) -> tuple[NDArray[F64], NDArray[F64]]:
-        """[T/A] with shape (nstruct X nr X nz), Structure mode flux density (B-field) tables, r- and z- components"""
+        """[T/A] with shape (nstruct X nr X nz),
+        Structure mode flux density (B-field) tables, r- and z- components"""
         return _calc_structure_mode_flux_density_tables(
             *self.structure_flux_density_tables,
             self.structure_model_reduction,
@@ -556,9 +543,7 @@ class DeviceInductance:
         no particular claims are made here about the accuracy of the force calculations,
         and they should never be used for human safety applications.
         """
-        return _calc_coil_coil_forces(
-            self.coils, self.grids, self.coil_flux_density_tables, self.show_prog
-        )
+        return _calc_coil_coil_forces(self.coils, self.grids, self.coil_flux_density_tables, self.show_prog)
 
     @cached_property
     def circuit_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
@@ -576,9 +561,7 @@ class DeviceInductance:
         no particular claims are made here about the accuracy of the force calculations,
         and they should never be used for human safety applications.
         """
-        return _calc_circuit_coil_forces(
-            self.coils, self.circuits, self.coil_coil_forces, self.show_prog
-        )
+        return _calc_circuit_coil_forces(self.coils, self.circuits, self.coil_coil_forces, self.show_prog)
 
     @cached_property
     def structure_coil_forces(self) -> tuple[NDArray[F64], NDArray[F64]]:
@@ -716,9 +699,9 @@ class DeviceInductance:
         Returns:
             poloidal flux field, [Wb] with shape (nr, nz)
         """
-        assert (
-            current_density.shape == self.meshes[0].shape
-        ), "Supplied current density shape does not match tables"
+        assert current_density.shape == self.meshes[0].shape, (
+            "Supplied current density shape does not match tables"
+        )
         if calc_method == "table":
             dr, dz = self.dxgrid  # [m] grid discretization
             area = dr * dz  # [m^2] cross-sectional area of grid cell
@@ -728,9 +711,7 @@ class DeviceInductance:
                 current = jtor_cell * area  # [A]
                 psi += current * psi_table_part  # [Wb]
         elif calc_method == "solve":
-            psi = solve_flux_axisymmetric(
-                self.grids, self.meshes, current_density, self.flux_solver
-            )
+            psi = solve_flux_axisymmetric(self.grids, self.meshes, current_density, self.flux_solver)
 
         return psi  # [Wb]
 
@@ -793,7 +774,8 @@ class DeviceInductance:
             plasma_poloidal_flux: [Wb] solved plasma flux field
             br_plasma: [T] solved plasma magnetic flux density, R-component
             bz_plasma: [T] solved plasma magnetic flux density, Z-component
-            plasma_surface: [m] r,z coordinates of plasma last closed flux surface (aka LCFS, aka bounding contour)
+            plasma_surface: [m] r,z coordinates of plasma last closed flux surface
+                            (aka LCFS, aka bounding contour)
             plasma_mask: [dimensionless] binary mask of plasma interior points. 1 inside, 0 outside.
 
         Returns:
@@ -829,9 +811,7 @@ class DeviceInductance:
                 self.max_nmodes,
             )
         else:
-            raise ValueError(
-                f"Unrecognized model reduction method `{self.model_reduction_method}`"
-            )
+            raise ValueError(f"Unrecognized model reduction method `{self.model_reduction_method}`")
 
         return d, tuv, neig
 

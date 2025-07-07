@@ -1,15 +1,13 @@
+from collections.abc import Callable, Iterator
 from datetime import datetime
-from typing import TypeVar, Iterator, Optional, Callable
+from typing import TypeVar
 
 import numpy as np
+from cfsem import flux_circular_filament, gs_operator_order4
 from numpy.typing import NDArray
 from scipy.constants import mu_0
-
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import factorized
-
-from cfsem import gs_operator_order4, flux_circular_filament
-
 
 T = TypeVar("T")
 
@@ -70,9 +68,7 @@ def _progressbar(it: list[T], suffix="", show_every: int = 1) -> Iterator[T]:
     print("\n", flush=True)
 
 
-def gradient_order4(
-    z: NDArray, xmesh: NDArray, ymesh: NDArray
-) -> tuple[NDArray, NDArray]:
+def gradient_order4(z: NDArray, xmesh: NDArray, ymesh: NDArray) -> tuple[NDArray, NDArray]:
     """
     Calculate gradient by 4th-order finite difference.
 
@@ -103,25 +99,21 @@ def gradient_order4(
     dy = ymesh[0][1] - ymesh[0][0]
 
     # Check regular grid assumption
-    assert np.all(
-        np.abs(np.diff(xmesh[:, 0]) - dx) / dx < 1e-6
-    ), "This method is only implemented for a regular grid"
-    assert np.all(
-        np.abs(np.diff(ymesh[0, :]) - dy) / dy < 1e-6
-    ), "This method is only implemented for a regular grid"
+    assert np.all(np.abs(np.diff(xmesh[:, 0]) - dx) / dx < 1e-6), (
+        "This method is only implemented for a regular grid"
+    )
+    assert np.all(np.abs(np.diff(ymesh[0, :]) - dy) / dy < 1e-6), (
+        "This method is only implemented for a regular grid"
+    )
 
     dzdx = np.zeros_like(z)
     for offs, w in _DDX_CENTRAL_ORDER4:
         start = int(2 + offs)
         end = int(nx - 2 + offs)
-        dzdx[2:-2, :] += (
-            w * z[start:end, :] / dx
-        )  # Central difference on interior points
+        dzdx[2:-2, :] += w * z[start:end, :] / dx  # Central difference on interior points
     for offs, w in _DDX_FWD_ORDER4:
         offs = int(offs)
-        dzdx[0:2, :] += (
-            w * z[offs : offs + 2, :] / dx
-        )  # One-sided difference on left side
+        dzdx[0:2, :] += w * z[offs : offs + 2, :] / dx  # One-sided difference on left side
     for offs, w in _DDX_BWD_ORDER4:
         start = int(-2 + offs)
         end = int(nx + offs)
@@ -143,9 +135,7 @@ def gradient_order4(
     return dzdx, dzdy
 
 
-def calc_flux_density_from_flux(
-    psi: NDArray, rmesh: NDArray, zmesh: NDArray
-) -> tuple[NDArray, NDArray]:
+def calc_flux_density_from_flux(psi: NDArray, rmesh: NDArray, zmesh: NDArray) -> tuple[NDArray, NDArray]:
     """
     Back-calculate B-field from poloidal flux per Wesson eqn 3.2.2 by 4th-order finite difference,
     modified to use total poloidal flux instead of flux per radian.
@@ -211,7 +201,7 @@ def solve_flux_axisymmetric(
     grids: tuple[NDArray, NDArray],
     meshes: tuple[NDArray, NDArray],
     current_density: NDArray,
-    solver: Optional[Callable[[NDArray], NDArray]] = None,
+    solver: Callable[[NDArray], NDArray] | None = None,
 ) -> NDArray:
     """
     Calculate the flux field associated with a given toroidal current density distribution,
@@ -237,9 +227,7 @@ def solve_flux_axisymmetric(
     area = dr * dz  # [m^2]
     rmesh, zmesh = meshes  # [m]
     nonzero_inds = np.where(current_density != 0.0)
-    current_density_nonzero = np.ascontiguousarray(
-        current_density[nonzero_inds]
-    )  # [A/m^2]
+    current_density_nonzero = np.ascontiguousarray(current_density[nonzero_inds])  # [A/m^2]
     rmesh_nonzero = np.ascontiguousarray(rmesh[nonzero_inds])  # [m]
     zmesh_nonzero = np.ascontiguousarray(zmesh[nonzero_inds])  # [m]
     # Solve `Delta* @ psi = -mu_0 * 2pi * rmesh * jtor`
@@ -254,9 +242,7 @@ def solve_flux_axisymmetric(
     rfil = rmesh_nonzero.flatten()
     zfil = zmesh_nonzero.flatten()
     for s in [[0, ...], [-1, ...], [..., 0], [..., -1]]:  # All boundary slices
-        rhs[s[0], s[1]] = flux_circular_filament(
-            ifil, rfil, zfil, rmesh[s[0], s[1]], zmesh[s[0], s[1]]
-        )
+        rhs[s[0], s[1]] = flux_circular_filament(ifil, rfil, zfil, rmesh[s[0], s[1]], zmesh[s[0], s[1]])
     #   Do the actual linear solve
     psi = solver(rhs.flatten()).reshape(rmesh.shape)  # [Wb]
 

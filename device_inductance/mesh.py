@@ -6,11 +6,10 @@ Mainly copied from Christoph Hasse's work on early device description adapters f
 import itertools
 from enum import Enum, auto
 
-from shapely import Polygon
-
 import gmsh
 import numpy as np
 from numpy.typing import NDArray
+from shapely import Polygon
 
 
 class MeshMode(Enum):
@@ -74,7 +73,7 @@ def _mesh_region(
     #  frequent unit test failures
     gmsh.option.setNumber("Mesh.RandomFactor", 1e-60)
     gmsh.option.setNumber("Mesh.RandomFactor3D", 1e-60)
-    gmsh.option.setNumber('General.NumThreads', 1)
+    gmsh.option.setNumber("General.NumThreads", 1)
 
     if mesh_mode == MeshMode.Triangular:
         gmsh.option.setNumber("Mesh.Algorithm", 8)
