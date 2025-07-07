@@ -3,7 +3,7 @@
 from itertools import product
 
 import numpy as np
-from shapely import Polygon, GeometryCollection, MultiPolygon
+from shapely import GeometryCollection, MultiPolygon, Polygon
 
 
 class RadialSlicer:
@@ -28,28 +28,25 @@ class RadialSlicer:
 
         # Choose a pie radius
         #   Actualize all the points at the corners of the extent
-        extent_points = [
-            np.array(x) for x in product([extent[0], extent[1]], [extent[2], extent[3]])
-        ]
+        extent_points = [np.array(x) for x in product([extent[0], extent[1]], [extent[2], extent[3]])]
         #   Find the largest radius from the centroid to any of the points
-        extent_radii = np.linalg.norm(
-            np.array([x - centroid_arr for x in extent_points]), axis=1
-        )
+        extent_radii = np.linalg.norm(np.array([x - centroid_arr for x in extent_points]), axis=1)
         pie_radius = 1.05 * np.max(extent_radii)
 
         pie_angles = np.linspace(0.0, 2.0 * np.pi, n_slices + 1)
         pie_r = rmid + pie_radius * np.cos(pie_angles)
         pie_z = zmid + pie_radius * np.sin(pie_angles)
-        pie_rz = [x for x in zip(pie_r, pie_z)]
+        pie_rz = [x for x in zip(pie_r, pie_z, strict=True)]
         mids = [(rmid, zmid)] * n_slices
         #  Sections start at the midpoint, go to two points on the circle, then end back at the midpoint
-        pie_sections = zip(mids, pie_rz[:-1], pie_rz[1:], mids)
+        pie_sections = zip(mids, pie_rz[:-1], pie_rz[1:], mids, strict=True)
         pie_slices = [Polygon(s) for s in pie_sections]
 
         self.polygons = pie_slices
 
     def slice(self, p: Polygon) -> list[Polygon]:
-        """Cut polygon `p` into as many as `n_slices` new polygons or as few as 1 polygon, if no cuts are needed."""
+        """Cut polygon `p` into as many as `n_slices` new
+        polygons or as few as 1 polygon, if no cuts are needed."""
 
         # Do the intersections - this can balloon into a jumble of outputs
         intersections = [p.intersection(s) for s in self.polygons]
@@ -60,7 +57,7 @@ class RadialSlicer:
         for g in intersections:
             # It's possible to have one polygon intersect more than once,
             # at an edge, at a point, etc. and we have to handle all cases.
-            if isinstance(g, GeometryCollection) or isinstance(g, MultiPolygon):
+            if isinstance(g, GeometryCollection | MultiPolygon):
                 new_polygons.extend([x for x in g.geoms if isinstance(x, Polygon)])
 
         # Remove any empty polygons; these are common

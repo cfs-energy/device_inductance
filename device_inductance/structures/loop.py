@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from functools import cached_property
 from dataclasses import dataclass
-
-import numpy as np
-from numpy.typing import NDArray
+from functools import cached_property
 
 import cfsem
-
+import numpy as np
+from numpy.typing import NDArray
 from shapely import Polygon
+
 from device_inductance import mesh
 
+from .filament import PassiveStructureFilament, _mesh_elem_to_fil
+from .heuristics import MAX_EDGE_LENGTH_M, poly_angle, unroundness
 from .input import PassiveStructureInput
 from .slicer import RadialSlicer
-from .heuristics import poly_angle, unroundness, MAX_EDGE_LENGTH_M
-from .filament import PassiveStructureFilament, _mesh_elem_to_fil
 
 
 @dataclass(frozen=True)
@@ -72,9 +71,7 @@ class PassiveStructureLoop:
             r = np.atleast_1d(f.r)
             z = np.atleast_1d(f.z)
             ref_current = fil_frac_of_loop[i]  # [A]
-            mutuals = fil_frac_of_loop * cfsem.flux_circular_filament(
-                ref_current, r, z, self.rs, self.zs
-            )
+            mutuals = fil_frac_of_loop * cfsem.flux_circular_filament(ref_current, r, z, self.rs, self.zs)
             # Replace singularity with analytic estimate
             mutuals[i] = fil_frac_of_loop[i] ** 2 * f.self_inductance
             self_inductance += np.sum(mutuals)
@@ -124,9 +121,7 @@ class PassiveStructureLoop:
         )
 
         # Make a filament from each mesh cell
-        filaments = [
-            _mesh_elem_to_fil(p, resistivity, parent_name) for p in sub_polygons
-        ]
+        filaments = [_mesh_elem_to_fil(p, resistivity, parent_name) for p in sub_polygons]
 
         # Call the collection of filaments a loop
         loop = PassiveStructureLoop(parent_name, polygon, filaments)
@@ -150,9 +145,7 @@ class PassiveStructureLoop:
         # If something spans a large region around the centroid
         # AND it's not a conceptually solid block of material,
         # subdivide it so that we get adequate detail about current in different regions.
-        angle_thresh_met = poly_angle(inp.polygon, slicer.centroid) > np.deg2rad(
-            angle_thresh_deg
-        )
+        angle_thresh_met = poly_angle(inp.polygon, slicer.centroid) > np.deg2rad(angle_thresh_deg)
         unroundness_thresh_met = unroundness(inp.polygon) > unroundness_thresh
 
         if angle_thresh_met and unroundness_thresh_met:

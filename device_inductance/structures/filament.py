@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 
 import numpy as np
-from shapely import Polygon, centroid
 from cfsem import self_inductance_lyle6
+from shapely import Polygon, centroid
 
 
 @dataclass(frozen=True)
@@ -27,9 +27,7 @@ class PassiveStructureFilament:
     """[m] Outline of mesh element"""
 
 
-def _mesh_elem_to_fil(
-    mesh_elem: Polygon, resistivity: float, parent_name: str
-) -> PassiveStructureFilament:
+def _mesh_elem_to_fil(mesh_elem: Polygon, resistivity: float, parent_name: str) -> PassiveStructureFilament:
     """Convert mesh element polygon to a resistive filament"""
     # Will this implicitly close? Is the mesh data ordered properly?
     area = mesh_elem.area  # [m^2]

@@ -3,21 +3,20 @@
 from itertools import product
 
 import numpy as np
-from numpy.typing import NDArray
-
-from device_inductance.coils import Coil
-from device_inductance.circuits import CoilSeriesCircuit
-from device_inductance.structures import PassiveStructureLoop
-from device_inductance.utils import (
-    _progressbar,
-    calc_flux_density_from_flux,
-    _rect_mask,
-)
-
 from cfsem import (
     flux_circular_filament,
     flux_density_circular_filament,
     self_inductance_lyle6,
+)
+from numpy.typing import NDArray
+
+from device_inductance.circuits import CoilSeriesCircuit
+from device_inductance.coils import Coil
+from device_inductance.structures import PassiveStructureLoop
+from device_inductance.utils import (
+    _progressbar,
+    _rect_mask,
+    calc_flux_density_from_flux,
 )
 
 _MIN_DIST = 0.15  # [m]
@@ -107,9 +106,7 @@ def _calc_coil_flux_density_tables(
         ifil = np.array([e.n for e in c.filaments])  # Effective current is nturns * 1A
         rfil = np.array([e.r for e in c.filaments])  # [m]
         zfil = np.array([e.z for e in c.filaments])  # [m]
-        b = flux_density_circular_filament(
-            ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
-        )  # [T/A]
+        b = flux_density_circular_filament(ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten())  # [T/A]
         br_mesh_coils[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_coils[i, :, :] = b[1].reshape(shape)  # [T/A]
 
@@ -184,19 +181,13 @@ def _calc_structure_flux_density_tables(
     items = [x for x in enumerate(structures)]
     show_every = max(1, npassive // 100)  # Don't spam too much
     if show_prog:
-        items = _progressbar(
-            items, "Structure flux density (B-field) tables", show_every
-        )
+        items = _progressbar(items, "Structure flux density (B-field) tables", show_every)
     for i, s in items:
         # Add contribution from each structure filament to its place in the table
-        ifil = (
-            s.ns
-        )  # [A] unit reference current for normalization times number of turns
+        ifil = s.ns  # [A] unit reference current for normalization times number of turns
         rfil = s.rs  # [m]
         zfil = s.zs  # [m]
-        b = flux_density_circular_filament(
-            ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
-        )  # [T/A]
+        b = flux_density_circular_filament(ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten())  # [T/A]
         br_mesh_structures[i, :, :] = b[0].reshape(shape)  # [T/A]
         bz_mesh_structures[i, :, :] = b[1].reshape(shape)  # [T/A]
 
@@ -210,7 +201,7 @@ def _calc_structure_flux_density_tables(
         )  # [T/A]
 
         # Figure out what part we're replacing relative to each filament
-        for r, z in zip(rfil, zfil):
+        for r, z in zip(rfil, zfil, strict=True):
             dist = ((rmesh - r) ** 2 + (zmesh - z) ** 2) ** 0.5  # [m]
             inds = np.where(dist < _MIN_DIST)
 
@@ -235,12 +226,8 @@ def _calc_mesh_flux_tables(
     nr, nz = shape
     dr = rgrid[1] - rgrid[0]
     dz = zgrid[1] - zgrid[0]
-    assert np.allclose(np.diff(rgrid), dr, atol=1e-6), (
-        "Self-inductance calc requires uniform grid"
-    )
-    assert np.allclose(np.diff(zgrid), dz, atol=1e-6), (
-        "Self-inductance calc requires uniform grid"
-    )
+    assert np.allclose(np.diff(rgrid), dr, atol=1e-6), "Self-inductance calc requires uniform grid"
+    assert np.allclose(np.diff(zgrid), dz, atol=1e-6), "Self-inductance calc requires uniform grid"
 
     # Calculate
     mesh_table_shape = (nr * nz, nr, nz)
@@ -264,9 +251,7 @@ def _calc_mesh_flux_tables(
             ifil, rfil, zfil, rmesh.flatten(), zmesh.flatten()
         ).reshape(shape)
         # Replace singular self-term with 6th order rectangular-section calc
-        psi_mesh_mesh[i, ir, iz] = self_inductance_lyle6(
-            float(rgrid[ir]), float(dr), float(dz), n=1.0
-        )
+        psi_mesh_mesh[i, ir, iz] = self_inductance_lyle6(float(rgrid[ir]), float(dr), float(dz), n=1.0)
 
     return np.ascontiguousarray(psi_mesh_mesh)  # [Wb/A]
 

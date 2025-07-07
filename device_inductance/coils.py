@@ -1,22 +1,19 @@
 from dataclasses import dataclass
-
 from functools import cached_property
 
 import numpy as np
+from cfsem import (
+    flux_circular_filament,
+    self_inductance_annular_ring,
+    self_inductance_circular_ring_wien,
+    self_inductance_lyle6,
+)
+from interpn import MulticubicRegular
 from numpy.typing import NDArray
 from omas import ODS
 from shapely import Polygon
 
-from cfsem import (
-    self_inductance_lyle6,
-    flux_circular_filament,
-    self_inductance_annular_ring,
-    self_inductance_circular_ring_wien,
-)
-
-from interpn import MulticubicRegular
-
-from device_inductance.local import local_fields, LocalFields
+from device_inductance.local import LocalFields, local_fields
 
 
 @dataclass(frozen=True)
@@ -87,7 +84,7 @@ class Coil:
 
         polygons = [
             Polygon.from_bounds(r - w / 2, z - w / 2, r + w / 2, z + w / 2)
-            for r, z in zip(self.rs, self.zs)
+            for r, z in zip(self.rs, self.zs, strict=True)
         ]
 
         # Point-source representation
@@ -181,14 +178,10 @@ def _extract_coils(description: ODS) -> list[Coil]:
                 ro = coil_elem["geometry.annulus.radius_outer"]  # [m]
 
                 if ri > 1e-4:
-                    elem_self_inductance = self_inductance_annular_ring(
-                        r, ri, ro
-                    )  # [H]
+                    elem_self_inductance = self_inductance_annular_ring(r, ri, ro)  # [H]
                 else:
                     # Use solid ring calc for small inner radius to avoid div/0
-                    elem_self_inductance = self_inductance_circular_ring_wien(
-                        r, ro
-                    )  # [H]
+                    elem_self_inductance = self_inductance_circular_ring_wien(r, ro)  # [H]
 
             elif geom_type == 2:
                 # Solid rectangular section
@@ -202,18 +195,14 @@ def _extract_coils(description: ODS) -> list[Coil]:
                 raise ValueError(f"Unhandled coil element geometry type: {geom_type}")
 
             # Store the parts we need for calculating mutual inductances
-            coil_filaments.append(
-                CoilFilament(r=r, z=z, n=n, self_inductance=float(elem_self_inductance))
-            )
+            coil_filaments.append(CoilFilament(r=r, z=z, n=n, self_inductance=float(elem_self_inductance)))
 
         # Calculate self-inductance of the whole coil
         coil_self_inductance = 0.0  # [H]
         elem_rs = np.array([x.r for x in coil_filaments])  # [m]
         elem_zs = np.array([x.z for x in coil_filaments])  # [m]
         elem_ns = np.array([x.n for x in coil_filaments])  # [dimensionless]
-        elem_self_inductances = np.array(
-            [x.self_inductance for x in coil_filaments]
-        )  # [H]
+        elem_self_inductances = np.array([x.self_inductance for x in coil_filaments])  # [H]
         nelem = len(elem_rs)
         for i in range(nelem):
             this_r = np.array([elem_rs[i]])  # [m]

@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.0.1 - 2025-07-07
+
+### Changed
+
+* Improve linter configuration
+* Resolve new lints
+
 ## 3.0.0 - 2025-07-01
 
 ### Added

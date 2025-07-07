@@ -130,15 +130,11 @@ In particular, some other methods offer particular advantages in exchange for co
       parts of system dynamics, especially phase response, but can suffer numerically with large systems
 """
 
-from typing import Tuple
-
 import numpy as np
 from numpy.typing import NDArray
 
 
-def eigenmode_reduction(
-    m: NDArray, r: NDArray, max_neig: int | None
-) -> Tuple[NDArray, NDArray, int]:
+def eigenmode_reduction(m: NDArray, r: NDArray, max_neig: int | None) -> tuple[NDArray, NDArray, int]:
     """
     Do eigenmode decomposition of inductive-resistive system and truncate
     to top `max_neig` terms.
