@@ -6,9 +6,17 @@ __version__ = metadata(str(__package__))["Version"]
 
 from omas import ODS, load_omas_json
 
-from device_inductance import contour, logging, mesh, model_reduction, sensors, structures
+from device_inductance import (
+    contour,
+    logging,
+    mesh,
+    model_reduction,
+    sensors,
+    structures,
+)
 from device_inductance.coils import Coil, CoilFilament
 from device_inductance.device import DeviceInductance, TypicalOutputs
+from device_inductance.grid import Extent, GridSpec, Resolution
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 from device_inductance.structures import PassiveStructureLoop
 from device_inductance.utils import (
@@ -76,13 +84,15 @@ The example differs from real SPARC configurations in at least the following way
 
 def typical(
     ods: ODS,
-    extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
-    dxgrid: tuple[float, float] = (0.0, 0.0),
+    min_extent: Extent | None = None,
+    gridspec: GridSpec | None = None,
+    dxgrid: Resolution = (0.0, 0.0),
     max_nmodes: int = 40,
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
     plasma_coil_force_method: Literal["tables", "mask"] = "mask",
     n_radial_slices: int = 30,
+    **kwargs,  # For backwards compatibility with `extent` kwarg only
 ) -> TypicalOutputs:
     """
     Generate a typical set of outputs,
@@ -95,7 +105,10 @@ def typical(
 
     Args:
         ods: An OMAS object in the format produced by device_description
-        extent: [m] Extent of computational domain; adjusted during init
+        min_extent: [m] rmin, rmax, zmin, zmax extent of computational domain.
+                    This will be updated during mesh initialization, during which it
+                    may be adjusted to satisfy the required spatial resolution.
+        gridspec: Exact alternative to min_extent. Only one of min_extent or gridspec should be provided.
         dxgrid: [m] Spatial resolution of computational grid
         max_nmodes: Maximum number of structure modes to keep. Defaults to 40.
         show_prog: Whether to show terminal progress bars. Defaults to True.
@@ -109,10 +122,19 @@ def typical(
     Returns:
         A fully-computed set of matrices and tables covering the needs of a typical workflow
     """
+    if not logger_is_set_up():
+        logger_setup_default()
+
+    if "extent" in kwargs:
+        # Backwards compatibility with `extent` kwarg name only
+        log().warning("`extent` input is deprecated; use `min_extent` or `gridspec` instead")
+        min_extent = kwargs.pop("extent")
+
     device = DeviceInductance(
         ods=ods,
         max_nmodes=max_nmodes,
-        extent=extent,
+        min_extent=min_extent,
+        gridspec=gridspec,
         dxgrid=dxgrid,
         model_reduction_method=model_reduction_method,
         show_prog=show_prog,
