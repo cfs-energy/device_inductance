@@ -1,3 +1,5 @@
+"""Axisymmetric (PF/CS) coils"""
+
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -78,9 +80,9 @@ class Coil:
         # half the smallest distance between two sequential filaments.
         # These polygons are only used if the windings do not fall on a regular grid
         # or are too close to r=0 to allow padding the grid to preserve boundary conditions.
-        drs = np.diff(self.rs)
+        drs = np.diff(self.rs)  # [m]
         dzs = np.diff(self.zs)
-        w = np.min(np.linalg.norm((drs, dzs), axis=0)) / 2
+        w = np.min(np.linalg.norm((drs, dzs), axis=0)) / 2  # [m]
 
         polygons = [
             Polygon.from_bounds(r - w / 2, z - w / 2, r + w / 2, z + w / 2)
@@ -88,7 +90,7 @@ class Coil:
         ]
 
         # Point-source representation
-        fil_rzn = (self.rs, self.zs, self.ns)
+        fil_rzn = (self.rs, self.zs, self.ns)  # [m], [m], [dimensionless]
 
         # Local field solve
         return local_fields(fil_rzn, polygons)

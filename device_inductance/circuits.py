@@ -1,3 +1,4 @@
+"""Circuits describing multiple axisymmetric coils in series"""
 from dataclasses import dataclass
 
 import numpy as np

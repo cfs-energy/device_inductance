@@ -1,3 +1,5 @@
+"""Primarily-axisymmetric model of a tokamak device cross-section
+and functions for extracting inductance matrices and magnetic field components."""
 from __future__ import annotations
 
 from collections.abc import Callable
