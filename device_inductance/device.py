@@ -179,6 +179,7 @@ class DeviceInductance:
 
         # Set a sensible default grid resolution to avoid dividing by zero
         if self._dxgrid == (0.0, 0.0):
+            log().warning("Replacing zero grid deltas with sensible default")
             self._dxgrid = (0.05, 0.05)
 
         # Immutable after init, except for new cache entries
@@ -208,10 +209,10 @@ class DeviceInductance:
         required grid resolution (and possibly gridspec) exactly.
         """
         if self.gridspec is not None:
-            rmin = self.gridspec.r0
-            rmax = rmin + (self.gridspec.nr - 1) * self.dxgrid[0]
-            zmin = self.gridspec.z0
-            zmax = zmin + (self.gridspec.nz - 1) * self.dxgrid[1]
+            rmin, nr, zmin, nz = self.gridspec
+            dr, dz = self.dxgrid
+            rmax = rmin + (nr - 1) * dr
+            zmax = zmin + (nz - 1) * dz
             return (rmin, rmax, zmin, zmax)
         else:
             assert self._min_extent is not None, "At least one of min_extent or gridspec must be provided"
@@ -304,10 +305,11 @@ class DeviceInductance:
     ) -> tuple[tuple[NDArray[F64], NDArray[F64]], Extent]:
         """Initialize both meshes and final extent after adjustment to achieve target resolution"""
         if self.gridspec is not None:
+            rmin, nr, zmin, nz = self.gridspec
             extent = self.min_extent  # [m] shrinkwraps gridspec
             rmin, rmax, zmin, zmax = extent  # [m]
-            rgrid = np.linspace(rmin, rmax, self.gridspec.nr)  # [m]
-            zgrid = np.linspace(zmin, zmax, self.gridspec.nz)  # [m]
+            rgrid = np.linspace(rmin, rmax, nr)  # [m]
+            zgrid = np.linspace(zmin, zmax, nz)  # [m]
             rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
         else:
             # Actualize the grid/mesh and update extent

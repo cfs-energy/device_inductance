@@ -1,18 +1,8 @@
-from typing import NamedTuple
+"""Grid input definitions"""
 
-
-class GridSpec(NamedTuple):
-    """Exact specification of regular grid,
-    as an alternative to approximate minimum extent"""
-
-    r0: float
-    """[m] start of r-grid"""
-    nr: int
-    """Number of points in r-grid"""
-    z0: float
-    """[m] Start of z-grid"""
-    nz: int
-    """Number of points in z-grid"""
+GridSpec = tuple[float, int, float, int]
+"""[m] rmin, nr, zmin, nz exact specification of regular grid,
+as an alternative to approximate minimum extent"""
 
 
 Extent = tuple[float, float, float, float]
@@ -20,4 +10,4 @@ Extent = tuple[float, float, float, float]
 
 
 Resolution = tuple[float, float]
-"""[m] spatial resolution of computational grid"""
+"""[m] dr, dz spatial resolution of computational grid"""

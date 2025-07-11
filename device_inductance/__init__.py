@@ -85,13 +85,13 @@ The example differs from real SPARC configurations in at least the following way
 def typical(
     ods: ODS,
     min_extent: Extent | None = None,
-    gridspec: GridSpec | None = None,
     dxgrid: Resolution = (0.0, 0.0),
     max_nmodes: int = 40,
     model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
     show_prog: bool = True,
     plasma_coil_force_method: Literal["tables", "mask"] = "mask",
     n_radial_slices: int = 30,
+    gridspec: GridSpec | None = None,  # Appended to avoid breaking change
     **kwargs,  # For backwards compatibility with `extent` kwarg only
 ) -> TypicalOutputs:
     """
@@ -108,7 +108,6 @@ def typical(
         min_extent: [m] rmin, rmax, zmin, zmax extent of computational domain.
                     This will be updated during mesh initialization, during which it
                     may be adjusted to satisfy the required spatial resolution.
-        gridspec: Exact alternative to min_extent. Only one of min_extent or gridspec should be provided.
         dxgrid: [m] Spatial resolution of computational grid
         max_nmodes: Maximum number of structure modes to keep. Defaults to 40.
         show_prog: Whether to show terminal progress bars. Defaults to True.
@@ -118,6 +117,7 @@ def typical(
                                   nonzero entries inside the limiter, which requires a valid limiter geometry.
         n_radial_slices: Number of radial slices to use for chunking large structures. Each slice is centered
                             at the limiter centroid.
+        gridspec: Exact alternative to min_extent. Only one of min_extent or gridspec should be provided.
 
     Returns:
         A fully-computed set of matrices and tables covering the needs of a typical workflow

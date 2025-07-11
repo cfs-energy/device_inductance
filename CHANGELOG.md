@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.0 - 2025-07-11
+
+### Added
+
+* Add `grid` module with types related to grid inputs
+* Add ability to pass in an exact gridspec as an alternative to the approximate min_extent
+* Add warnings when applying hidden defaults or accommodating deprecated kwargs
+
+### Changed
+
+* Update `typical()` and `typical_outputs` to use min_extent and gridspec inputs
+
 ## 3.0.1 - 2025-07-07
 
 ### Changed
