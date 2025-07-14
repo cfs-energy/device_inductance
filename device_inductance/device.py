@@ -11,6 +11,7 @@ from cfsem import (
 )
 from numpy.typing import NDArray
 from omas import ODS
+from pytest import approx
 from shapely import Point, Polygon
 
 from device_inductance import model_reduction
@@ -305,11 +306,17 @@ class DeviceInductance:
     ) -> tuple[tuple[NDArray[F64], NDArray[F64]], Extent]:
         """Initialize both meshes and final extent after adjustment to achieve target resolution"""
         if self.gridspec is not None:
+            # Make the grid
             rmin, nr, zmin, nz = self.gridspec
             extent = self.min_extent  # [m] shrinkwraps gridspec
             rmin, rmax, zmin, zmax = extent  # [m]
             rgrid = np.linspace(rmin, rmax, nr)  # [m]
             zgrid = np.linspace(zmin, zmax, nz)  # [m]
+            # Check that the grid exactly matches the spec
+            dr, dz = self.dxgrid
+            assert rgrid[1] - rgrid[0] == approx(dr, rel=1e-8)
+            assert zgrid[1] - zgrid[0] == approx(dz, rel=1e-8)
+
             rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
         else:
             # Actualize the grid/mesh and update extent
