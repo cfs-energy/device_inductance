@@ -11,6 +11,7 @@ from cfsem import (
 )
 from numpy.typing import NDArray
 from omas import ODS
+from pytest import approx
 from shapely import Point, Polygon
 
 from device_inductance import model_reduction
@@ -22,6 +23,7 @@ from device_inductance.forces import (
     _calc_plasma_coil_forces,
     _calc_structure_coil_forces,
 )
+from device_inductance.grid import Extent, GridSpec, Resolution
 from device_inductance.logging import log, logger_is_set_up, logger_setup_default
 from device_inductance.mutuals import (
     _calc_circuit_mutual_inductances,
@@ -79,13 +81,15 @@ class DeviceInductance:
     """OMAS data object in the format produced by device_description"""
     _max_nmodes: int = 40
     """Maximum number of structure modes to retain"""
-    _min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    _min_extent: Extent | None = None
     """
     [m] rmin, rmax, zmin, zmax extent of computational domain.
     This will be updated during mesh initialization, during which it
     may be adjusted to satisfy the required spatial resolution.
     """
-    _dxgrid: tuple[float, float] = (0.05, 0.05)
+    _gridspec: GridSpec | None = None
+    """Exact alternative to min_extent. Only one of min_extent or gridspec should be provided."""
+    _dxgrid: Resolution = (0.05, 0.05)
     """[m] spatial resolution of computational grid"""
     _model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode"
     """Choice of method for truncating passive structure system modes"""
@@ -106,7 +110,8 @@ class DeviceInductance:
         *,
         show_prog: bool = False,
         max_nmodes: int = 40,
-        min_extent: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+        min_extent: Extent | None = None,
+        gridspec: GridSpec | None = None,
         dxgrid: tuple[float, float] = (0.05, 0.05),
         model_reduction_method: Literal["eigenmode", "stabilized eigenmode"] = "eigenmode",
         plasma_coil_force_method: Literal["tables", "mask"] = "mask",
@@ -123,6 +128,7 @@ class DeviceInductance:
             min_extent: [m] rmin, rmax, zmin, zmax extent of computational domain.
                     This will be updated during mesh initialization, during which it
                     may be adjusted to satisfy the required spatial resolution.
+            gridspec: Exact alternative to min_extent. Only one of min_extent or gridspec should be provided.
             dxgrid: [m] spatial resolution of computational grid
             plasma_coil_force_method: Whether to interpolate B-field on the fully-realized mesh tables,
                                       or do direct filament calculations from points inside the limiter mask.
@@ -137,6 +143,7 @@ class DeviceInductance:
 
         if "extent" in kwargs:
             # Backwards compatibility with `extent` kwarg name only
+            log().warning("`extent` input is deprecated; use `min_extent` or `gridspec` instead")
             min_extent = kwargs.pop("extent")
 
         if len(kwargs) != 0:
@@ -145,6 +152,7 @@ class DeviceInductance:
         self._ods = ods
         self._max_nmodes = max_nmodes
         self._min_extent = min_extent
+        self._gridspec = gridspec
         self._dxgrid = dxgrid
         self._model_reduction_method = model_reduction_method
         self._show_prog = show_prog
@@ -158,8 +166,8 @@ class DeviceInductance:
         return hash(id(self))
 
     def __post_init__(self):
-        # Set a sensible default that encompasses the coils with 0.1m pad if none was provided
-        if self._min_extent == (0.0, 0.0, 0.0, 0.0):
+        # Set a sensible default grid that encompasses the coils with 0.1m pad if none was provided
+        if (self._min_extent is None or self._min_extent == (0.0, 0.0, 0.0, 0.0)) and self._gridspec is None:
             inf = float("inf")
             self._min_extent = (inf, -inf, inf, -inf)
             for c in self.coils:
@@ -172,6 +180,7 @@ class DeviceInductance:
 
         # Set a sensible default grid resolution to avoid dividing by zero
         if self._dxgrid == (0.0, 0.0):
+            log().warning("Replacing zero grid deltas with sensible default")
             self._dxgrid = (0.05, 0.05)
 
         # Immutable after init, except for new cache entries
@@ -195,12 +204,25 @@ class DeviceInductance:
         return self._max_nmodes
 
     @property
-    def min_extent(self) -> tuple[float, float, float, float]:
+    def min_extent(self) -> Extent:
         """[m] (rmin, rmax, zmin, zmax) minimum extent requested at init.
         The actual extent of the mesh bounds this minimum, while respecting the
-        required grid resolution exactly.
+        required grid resolution (and possibly gridspec) exactly.
         """
-        return self._min_extent
+        if self.gridspec is not None:
+            rmin, nr, zmin, nz = self.gridspec
+            dr, dz = self.dxgrid
+            rmax = rmin + (nr - 1) * dr
+            zmax = zmin + (nz - 1) * dz
+            return (rmin, rmax, zmin, zmax)
+        else:
+            assert self._min_extent is not None, "At least one of min_extent or gridspec must be provided"
+            return self._min_extent
+
+    @property
+    def gridspec(self) -> GridSpec | None:
+        """Exact alternative to min_extent. Only one of min_extent or gridspec should be provided."""
+        return self._gridspec
 
     @property
     def dxgrid(self) -> tuple[float, float]:
@@ -281,29 +303,44 @@ class DeviceInductance:
     @cached_property
     def _calc_meshes(
         self,
-    ) -> tuple[tuple[NDArray[F64], NDArray[F64]], tuple[float, float, float, float]]:
+    ) -> tuple[tuple[NDArray[F64], NDArray[F64]], Extent]:
         """Initialize both meshes and final extent after adjustment to achieve target resolution"""
-        # Actualize the grid/mesh and update extent
-        rmin, rmax, zmin, zmax = self.min_extent  # [m]
-        dr, dz = self.dxgrid  # [m]
-        if rmax - rmin > 0.0 and zmax - zmin > 0.0:
-            rgrid = np.arange(rmin, rmax + dr, dr)  # [m] Grid that spans full extent
-            zgrid = np.arange(zmin, zmax + dz, dz)  # [m]
-            rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
+        if self.gridspec is not None:
+            # Make the grid
+            rmin, nr, zmin, nz = self.gridspec
+            extent = self.min_extent  # [m] shrinkwraps gridspec
+            rmin, rmax, zmin, zmax = extent  # [m]
+            rgrid = np.linspace(rmin, rmax, nr)  # [m]
+            zgrid = np.linspace(zmin, zmax, nz)  # [m]
+            # Check that the grid exactly matches the spec
+            dr, dz = self.dxgrid
+            assert rgrid[1] - rgrid[0] == approx(dr, rel=1e-8)
+            assert zgrid[1] - zgrid[0] == approx(dz, rel=1e-8)
 
-            # Update the extent, which may have been adjusted
-            extent = (
-                float(np.min(rgrid)),
-                float(np.max(rgrid)),
-                float(np.min(zgrid)),
-                float(np.max(zgrid)),
-            )
+            rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
         else:
-            # If our grid spec is zero-size, make a unit mesh
-            # to allow the calcs to proceed, without providing real tables
-            rmesh = np.nan * np.zeros((1, 1))
-            zmesh = np.nan * np.zeros((1, 1))
-            extent = self.min_extent
+            # Actualize the grid/mesh and update extent
+            rmin, rmax, zmin, zmax = self.min_extent  # [m]
+            dr, dz = self.dxgrid  # [m]
+            if rmax - rmin > 0.0 and zmax - zmin > 0.0:
+                rgrid = np.arange(rmin, rmax + dr, dr)  # [m] Grid that spans full extent
+                zgrid = np.arange(zmin, zmax + dz, dz)  # [m]
+                rmesh, zmesh = np.meshgrid(rgrid, zgrid, indexing="ij")  # [m]
+
+                # Update the extent, which may have been adjusted
+                extent = (
+                    float(np.min(rgrid)),
+                    float(np.max(rgrid)),
+                    float(np.min(zgrid)),
+                    float(np.max(zgrid)),
+                )
+            else:
+                # If our grid spec is zero-size, make a unit mesh
+                # to allow the calcs to proceed, without providing real tables
+                rmesh = np.nan * np.zeros((1, 1))
+                zmesh = np.nan * np.zeros((1, 1))
+                extent = self.min_extent
+
         return (rmesh, zmesh), extent
 
     @cached_property
@@ -321,13 +358,13 @@ class DeviceInductance:
         return (rgrid, zgrid)
 
     @cached_property
-    def extent(self) -> tuple[float, float, float, float]:
+    def extent(self) -> Extent:
         """[m] The (rmin, rmax, zmin, zmax) extent of the grid cell centers"""
         _, extent = self._calc_meshes
         return extent
 
     @cached_property
-    def extent_for_plotting(self) -> tuple[float, float, float, float]:
+    def extent_for_plotting(self) -> Extent:
         """[m] The (rmin, rmax, zmin, zmax) extent of the grid cell edges"""
         rmin, rmax, zmin, zmax = self.extent
         dr, dz = self.dxgrid
@@ -829,13 +866,14 @@ class TypicalOutputs:
     on a device description ODS.
     """
 
-    extent: tuple[float, float, float, float]
+    extent: Extent
     """
     [m] Extent of the computational domain's cell centers.
     This will be updated during initialization, during which it
     may be adjusted to satisfy the required spatial resolution.
     """
-    extent_for_plotting: tuple[float, float, float, float]
+
+    extent_for_plotting: Extent
     """
     [m] The full extent of the computational domain implied by
     the cell centers, expanded a half-cell to the boundary cells' edges
