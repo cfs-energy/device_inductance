@@ -339,6 +339,9 @@ class DeviceInductance:
                 zmesh = np.nan * np.zeros((1, 1))
                 extent = self.min_extent
 
+            rmesh = rmesh.astype(np.float64)
+            zmesh = zmesh.astype(np.float64)
+
         return (rmesh, zmesh), extent
 
     @cached_property
