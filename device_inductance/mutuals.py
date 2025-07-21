@@ -141,10 +141,10 @@ def _calc_coil_plasma_mutual_inductances(
     plasma_current: float,
     plasma_flux: NDArray,
     grids: tuple[NDArray, NDArray],
-    coil_rzn: list[list[tuple[float, float, float]]],
+    coils: list[Coil],
     show_prog: bool = True,
 ) -> NDArray:
-    ncoils = len(coil_rzn)
+    ncoils = len(coils)
     m = np.zeros((ncoils, 1))  # [H]
 
     psi_interp = MulticubicRectilinear.new([x for x in grids], plasma_flux / plasma_current)  # [H]
@@ -154,14 +154,11 @@ def _calc_coil_plasma_mutual_inductances(
     # current than there are coil filaments, and this direction of calc also
     # allows us to only make one interpolator for the plasma flux instead of
     # many interpolators (one for each coil).
-    items = [x for x in enumerate(coil_rzn)]
+    items = [x for x in enumerate(coils)]
     if show_prog:
         items = _progressbar(items, "Coil-plasma mutual inductances")
-    for i, fils in items:  # For each coil
-        rs, zs, ns = np.array(fils).T
-        rs = np.ascontiguousarray(rs)
-        zs = np.ascontiguousarray(zs)
-        m[i, 0] = np.sum(ns * psi_interp.eval([rs, zs]))
+    for i, c in items:  # For each coil
+        m[i, 0] = np.sum(c.ns * psi_interp.eval([c.rs, c.zs]))
 
     return m  # [H] coil-plasma mutual inductance
 

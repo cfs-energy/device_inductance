@@ -101,7 +101,7 @@ def plasma_response_linearization(
         plasma_current,
         plasma_poloidal_flux,
         device.grids,
-        device.coil_filament_rzn,
+        device.coils,
         show_prog=device.show_prog,
     )  # [H] coil-plasma mutual inductances
 
