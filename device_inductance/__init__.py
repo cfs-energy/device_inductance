@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from importlib.metadata import metadata
 from pathlib import Path
 from typing import Literal
@@ -6,7 +8,7 @@ __version__ = metadata(str(__package__))["Version"]
 
 from omas import ODS, load_omas_json
 
-from device_inductance import (
+from . import (
     contour,
     logging,
     mesh,
@@ -14,12 +16,13 @@ from device_inductance import (
     sensors,
     structures,
 )
-from device_inductance.coils import Coil, CoilFilament
-from device_inductance.device import DeviceInductance, TypicalOutputs
-from device_inductance.grid import Extent, GridSpec, Resolution
-from device_inductance.logging import log, logger_is_set_up, logger_setup_default
-from device_inductance.structures import PassiveStructureLoop
-from device_inductance.utils import (
+from .coils import Coil, CoilFilament
+from .device import DeviceInductance, TypicalOutputs
+from .grid import Extent, GridSpec, Resolution
+from .linearization import PlasmaLinearization
+from .logging import log, logger_is_set_up, logger_setup_default
+from .structures import PassiveStructureLoop
+from .utils import (
     calc_flux_density_from_flux,
     flux_solver,
     gradient_order4,
@@ -167,6 +170,7 @@ def typical(
 __all__ = [
     "DeviceInductance",
     "TypicalOutputs",
+    "PlasmaLinearization",
     "typical",
     "Coil",
     "CoilFilament",

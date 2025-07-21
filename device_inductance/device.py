@@ -6,9 +6,7 @@ from functools import cached_property
 from typing import Literal
 
 import numpy as np
-from cfsem import (
-    self_inductance_distributed_axisymmetric_conductor,
-)
+from cfsem import self_inductance_distributed_axisymmetric_conductor
 from numpy.typing import NDArray
 from omas import ODS
 from pytest import approx
