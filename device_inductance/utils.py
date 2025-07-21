@@ -249,6 +249,23 @@ def solve_flux_axisymmetric(
     return psi
 
 
+def guess_psip(rmesh: NDArray, zmesh: NDArray, r0: float, elongation: float = 1.0) -> NDArray:
+    """
+    Qualitative initial guess for plasma flux contribution, centered at R0.
+    Does not produce a specific minor radius or any other particulars, just a smooth
+    falloff from 1.0 centered at (r0, zmid).
+    """
+    rmin = rmesh[0][0]
+    rmax = rmesh[-1][0]
+    zmin = zmesh[0][0]
+    zmax = zmesh[0][-1]
+    rnorm = (rmesh - rmin) / (rmax - rmin)  # in [0, 1]
+    znorm = (zmesh - zmin) / (zmax - zmin)  # in [0, 1]
+    r0_norm = (r0 - rmin) / (rmax - rmin)
+    psi_p = np.exp(-((rnorm - r0_norm) ** 2 + ((znorm - 0.5) / elongation) ** 2) / 0.4**2)
+    return psi_p  # [Wb]
+
+
 def _check_regular(grids: tuple[NDArray, NDArray], tol=1e-6) -> tuple[float, float]:
     """Check that grids are regular and returns spacing"""
     rgrid, zgrid = grids

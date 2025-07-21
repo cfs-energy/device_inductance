@@ -6,9 +6,7 @@ from functools import cached_property
 from typing import Literal
 
 import numpy as np
-from cfsem import (
-    self_inductance_distributed_axisymmetric_conductor,
-)
+from cfsem import self_inductance_distributed_axisymmetric_conductor
 from numpy.typing import NDArray
 from omas import ODS
 from pytest import approx
@@ -340,6 +338,9 @@ class DeviceInductance:
                 rmesh = np.nan * np.zeros((1, 1))
                 zmesh = np.nan * np.zeros((1, 1))
                 extent = self.min_extent
+
+            rmesh = rmesh.astype(np.float64)
+            zmesh = zmesh.astype(np.float64)
 
         return (rmesh, zmesh), extent
 

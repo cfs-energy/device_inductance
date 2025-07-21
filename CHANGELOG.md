@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.2.0 - 2025-07-21
+
+### Added
+
+* Add `linearization` module and example for building local rigid-body plasma R-Z-Ip state-space system
+* Add `guess_psip` function for building a notional (not at all realistic) plasma flux distribution for testing
+* Add various functions in `mutuals` for calculating inductances between the plasma and other conductors
+
 ## 3.1.0 - 2025-07-11
 
 ### Added

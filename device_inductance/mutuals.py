@@ -2,12 +2,13 @@ from itertools import product
 
 import numpy as np
 from cfsem import flux_circular_filament, mutual_inductance_of_cylindrical_coils
+from interpn import MulticubicRectilinear
 from numpy.typing import NDArray
 
-from device_inductance.circuits import CoilSeriesCircuit
-from device_inductance.coils import Coil
-from device_inductance.structures import PassiveStructureLoop
-from device_inductance.utils import _progressbar
+from .circuits import CoilSeriesCircuit
+from .coils import Coil
+from .structures import PassiveStructureLoop
+from .utils import _progressbar
 
 
 def _calc_coil_mutual_inductances(coils: list[Coil], show_prog: bool = True) -> NDArray:
@@ -134,3 +135,77 @@ def _calc_circuit_structure_mutual_inductances(
             m[i, :] += sign * coil_structure_mutual_inductances[j, :]
 
     return m  # [H]
+
+
+def _calc_coil_plasma_mutual_inductances(
+    plasma_current: float,
+    plasma_flux: NDArray,
+    grids: tuple[NDArray, NDArray],
+    coils: list[Coil],
+    show_prog: bool = True,
+) -> NDArray:
+    ncoils = len(coils)
+    m = np.zeros((ncoils, 1))  # [H]
+
+    psi_interp = MulticubicRectilinear.new([x for x in grids], plasma_flux / plasma_current)  # [H]
+
+    # Sum up interpolated plasma flux at each filament location
+    # because there are usually many more grid cells with nonzero plasma
+    # current than there are coil filaments, and this direction of calc also
+    # allows us to only make one interpolator for the plasma flux instead of
+    # many interpolators (one for each coil).
+    items = [x for x in enumerate(coils)]
+    if show_prog:
+        items = _progressbar(items, "Coil-plasma mutual inductances")
+    for i, c in items:  # For each coil
+        m[i, 0] = np.sum(c.ns * psi_interp.eval([c.rs, c.zs]))
+
+    return m  # [H] coil-plasma mutual inductance
+
+
+def _calc_circuit_plasma_mutual_inductances(
+    circuits: list[CoilSeriesCircuit],
+    coil_plasma_mutual_inductances: NDArray,
+    show_prog: bool = True,
+) -> NDArray:
+    nelem = len(circuits)
+    m = np.zeros((nelem, 1))  # [H]
+
+    items = [x for x in enumerate(circuits)]
+    if show_prog:
+        items = _progressbar(items, "Circuit-plasma mutual inductances")
+    for i, circ in items:
+        for j, sign in circ.coils:
+            m[i, 0] += sign * coil_plasma_mutual_inductances[j, :]
+
+    return m  # [H] circuit-plasma mutual inductances
+
+
+def _calc_structure_plasma_mutual_inductances(
+    plasma_current: float,
+    plasma_flux: NDArray,
+    grids: tuple[NDArray, NDArray],
+    structures: list[PassiveStructureLoop],
+    show_prog: bool = True,
+) -> NDArray:
+    nelem = len(structures)
+    m = np.zeros((nelem, 1))  # [H]
+
+    psi_interp = MulticubicRectilinear.new([x for x in grids], plasma_flux / plasma_current)  # [H]
+
+    # Sum up interpolated plasma flux at each filament location.
+    # There may be more structure filaments than plasma grid cells,
+    # so this ordering still allows us to formulate fewer interpolators
+    # and access fewer flux tables.
+    for s in structures:
+        m[:, 0] = np.sum(s.ns * psi_interp.eval([s.rs, s.zs]))
+
+    return m  # [H] structure-plasma mutual inductance
+
+
+def _calc_structure_mode_plasma_mutual_inductances(
+    structure_plasma_mutual_inductances: NDArray, tuv: NDArray
+) -> NDArray:
+    m = (structure_plasma_mutual_inductances.T @ tuv).T  # [H]
+    m = np.ascontiguousarray(m)
+    return m  # [H] mode-plasma mutual inductances

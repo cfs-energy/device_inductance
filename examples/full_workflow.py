@@ -2,8 +2,8 @@
 
 from itertools import chain, cycle
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import device_inductance
 
@@ -98,8 +98,8 @@ color_cycle = cycle(["#d10606", "#06d12b", "#06c7d1"])
 for s in device.structures:
     plt.plot(*s.polygon.boundary.xy, linewidth=3, color=next(color_cycle))
     for f in s.filaments:
-        plt.plot(*f.polygon.boundary.xy, linewidth=1, color='k', alpha=0.7)
-    
+        plt.plot(*f.polygon.boundary.xy, linewidth=1, color="k", alpha=0.7)
+
 
 for c in device.coils:
     coil_rs = [f.r for f in c.filaments]
@@ -150,9 +150,7 @@ plt.colorbar()
 plt.title("Coil-Structure Mutual Inductances [H]")
 
 plt.figure()
-plt.imshow(
-    typical_outputs.tuv, extent=[0, 1, 0, 1], origin="lower", interpolation="nearest"
-)
+plt.imshow(typical_outputs.tuv, extent=[0, 1, 0, 1], origin="lower", interpolation="nearest")
 d = device.structure_mode_eigenvalues
 plt.plot(
     np.linspace(0.0, 1.0, nmodes, endpoint=True),
