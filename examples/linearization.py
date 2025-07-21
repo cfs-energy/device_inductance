@@ -18,11 +18,11 @@ show_prog = plt.get_backend().lower() != "agg"
 # Set up a regular computational grid
 dxgrid = (0.05, 0.05)
 dr, dz = dxgrid
-extent = (dr * 2.0, 4.5, -3.5, 3.5)
+min_extent = (dr * 2.0, 4.5, -3.5, 3.5)
 
 # Load the default device
 ods = device_inductance.load_default_ods()
-device = DeviceInductance(ods=ods, min_extent=extent, dxgrid=dxgrid, show_prog=True)
+device = DeviceInductance(ods=ods, min_extent=min_extent, dxgrid=dxgrid, show_prog=True)
 
 # Set some arbitrary inputs
 ip = 10e6  # [A] 1MA plasma toroidal current just to have a number
@@ -34,14 +34,14 @@ structure_current = 1e3 * np.ones(device.n_structure_modes)  # [A]
 # which doesn't need to be particularly sane for this example
 # but should preferably not interfere with the coil or structure locations
 rmesh, zmesh = device.meshes
-#    Abuse the psi guess function to make a current density distribution
+#    Abuse the psi guess function to make a notional current density distribution
 jshape = guess_psip(rmesh, zmesh, r0=1.8, elongation=1.5) - 0.95
 jtor = jshape * np.where(jshape > 0.0, True, False) * device.limiter_mask
 jtor *= ip / (np.sum(jtor) * dr * dz)  # [A/m^2] Scale to target plasma current
 
 # Get the plasma flux for this current density
 # via tables, because the tables will be used later during the linearization calc,
-# although a grad-shafranov solve would be much faster here
+# although a direct linear solve would be much faster here
 psi_p = device.calc_plasma_flux(jtor, calc_method="table")  # [Wb]
 br_p, bz_p = device.calc_plasma_flux_density(psi_p)  # [T]
 
@@ -81,4 +81,4 @@ linearization: PlasmaLinearization = plasma_response_linearization(
     include_cross_terms=True,
 )
 
-print(f"Vertical instability characteristic frequency: {linearization.gamma} [Hz]")
+print(f"Vertical instability characteristic frequency: {linearization.gamma:.1f} [Hz]")

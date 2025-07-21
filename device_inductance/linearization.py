@@ -290,7 +290,7 @@ def plasma_response_linearization(
 
     # State-space system
     lstari = np.linalg.inv(lstar)  # [1/H]
-    amat = -lstari @ np.diag(rx)  # [1/s], shape (nx + ?1, nx + ?1)
+    amat: NDArray[np.float64] = -lstari @ np.diag(rx)  # [1/s], shape (nx + ?1, nx + ?1)
     bmat = lstari[:, :na]  # [1/H], shape (nx + ?1, na)
 
     # Mesh flux sensitivity
@@ -306,9 +306,10 @@ def plasma_response_linearization(
 
     # Scale eigenvalues
     d, v = np.linalg.eig(amat)  # Needed to extract gamma later, scaled or not
+    d = d.astype(np.complex64).real  # In general, assume complex, but inductive-resistive -> always real
     if gamma_multiplier != 1.0:
-        # Sort eigenvalues by magnitude of real part
-        inds = np.flip(np.argsort(d.real))
+        # Sort eigenvalues by magnitude
+        inds = np.flip(np.argsort(d))
         d = d[inds]
         v = v[:, inds]
         # If there is a vertical instability (which may not be present, depending on conditions)
@@ -333,7 +334,7 @@ def plasma_response_linearization(
     # Extract the most-positive real eigenvalue of `A`
     # which should represent the vertical instability growth rate
     # if that instability is present
-    gamma = float(np.max(d.real))
+    gamma = float(np.max(d))
 
     # Ideal sensor responses
     bpols = device.poloidal_field_probes
