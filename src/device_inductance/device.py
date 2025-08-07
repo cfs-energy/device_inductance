@@ -303,7 +303,7 @@ class DeviceInductance:
     @cached_property
     def _calc_meshes(
         self,
-    ) -> tuple[tuple[NDArray[F64], NDArray[F64]], Extent]:
+    ) -> tuple[tuple[NDArray, NDArray], Extent]:
         """Initialize both meshes and final extent after adjustment to achieve target resolution"""
         if self.gridspec is not None:
             # Make the grid
