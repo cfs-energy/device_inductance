@@ -29,6 +29,7 @@ nav:
     - "Device": api/device.md
     - "Components": api/components.md
     - "Model Reduction": api/model_reduction.md
+    - "Local Field Solve": api/local.md
     - "Boundary Tracing": api/contour.md
     - "Utility Functions": api/utils.md
 
@@ -56,5 +57,5 @@ extra_css:
   - stylesheets/extra.css
 
 watch:
-  - device_inductance
+  - src/device_inductance
 
