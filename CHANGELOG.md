@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.0 - 2025-08-07
+
+### Changed
+
+* Use src-layout package structure
+
 ## 3.1.0 - 2025-07-11
 
 ### Added

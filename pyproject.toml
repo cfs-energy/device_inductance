@@ -1,6 +1,6 @@
 [project]
 name = "device_inductance"
-version = "3.1.0"
+version = "3.2.0"
 description = "Tokamak core inductance matrices and flux tables"
 authors = [{ name = "Commonwealth Fusion Systems", email = "jlogan@cfs.energy" }]
 requires-python = ">=3.10, <3.14"
@@ -31,10 +31,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.5",
-    "coverage==7.8.0",
-    "ruff==0.11.8",
-    "pyright==1.1.402",
+    "pytest==8.4.1",
+    "coverage==7.10.2",
+    "ruff==0.12.7",
+    "pyright==1.1.403",
     "mktestdocs==0.2.4",
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.6.12",
@@ -45,9 +45,6 @@ dev = [
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["device_inductance"]
 
 [tool.setuptools.package-data]
 device_inductance = ['py.typed']

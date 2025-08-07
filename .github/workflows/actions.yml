@@ -5,7 +5,7 @@ on:
     branches:
       - release
       - main
-  pull_request: []
+  pull_request:
   workflow_dispatch:
     tag: "Manual Run"
 
@@ -34,7 +34,7 @@ jobs:
         uv pip install .[dev]
 
         # Lint and test
-        uv run --locked ruff check ./device_inductance
-        uv run --locked pyright ./device_inductance
-        MPLBACKEND="AGG" uv run --locked coverage run --source=./device_inductance -m pytest ./test --verbose
+        uv run --locked ruff check ./src/device_inductance
+        uv run --locked pyright ./src/device_inductance
+        MPLBACKEND="AGG" uv run --locked coverage run --source=./src/device_inductance -m pytest ./test
         uv run --locked coverage report
