@@ -49,7 +49,7 @@ The example differs from real SPARC configurations in at least the following way
                   """)
 
     # NOTE: This should be rewritten to use importlib once omas supports loading raw text
-    ods_filename = Path(__file__).parent / "../examples/OS_SPARC_Device_Description.json"
+    ods_filename = Path(__file__).parent / "../../examples/OS_SPARC_Device_Description.json"
     with open(ods_filename) as f:
         ods = load_omas_json(f)
 
