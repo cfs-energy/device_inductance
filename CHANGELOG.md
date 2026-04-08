@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.3 - 2026-04-08
+
+### Changed
+
+* Update deps
+
 ## 3.2.1 - 2025-11-05
 
 ### Changed
