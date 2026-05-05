@@ -33,7 +33,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage==7.10.2",
-    "ruff==0.12.7",
+    "ruff==0.15.12",
     "ty==0.0.34",
     "mktestdocs==0.2.4",
     "mkdocs>=1.6.0",
@@ -67,5 +67,5 @@ select = [
     "SIM",
 ]
 
-[tool.coverage.report]
-fail_under = 95
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=95"
