@@ -102,7 +102,7 @@ def trace_contour(
         sol = minimize(
             fun=lambda x: (psi_interp_point(x[0], x[1]) - psi0) ** 2,
             x0=[r[i], z[i]],
-            options=dict(maxiter=100),  # type: ignore
+            options=dict(maxiter=100),
             tol=tol,
         )
         (r[i], z[i]) = sol.x

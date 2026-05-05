@@ -187,7 +187,7 @@ class DeviceInductance:
         def setattr_err(*_, **__):
             raise NotImplementedError("DeviceInductance attributes are not intended to be mutated")
 
-        self.__setattr__ = setattr_err
+        self.__setattr__ = setattr_err  # type: ignore
 
     @property
     def ods(self) -> ODS:

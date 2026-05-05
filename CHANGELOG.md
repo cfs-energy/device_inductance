@@ -1,6 +1,14 @@
 # Changelog
 
-## 3.2.2 - 2026-04-08
+## 3.2.3 - 2026-05-05
+
+### Changed
+
+* Use `ty` instead of pyright
+* Make pytest a nominal requirement
+* Use dep groups for dev deps instead of optional deps
+
+## 3.2.2 - 2025-12-22
 
 ### Changed
 
