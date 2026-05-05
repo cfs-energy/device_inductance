@@ -37,5 +37,5 @@ jobs:
         uv run --locked ruff check ./src/device_inductance
         uv run --locked ruff format --check ./src/device_inductance
         uv run --locked ty check ./src/device_inductance
-        MPLBACKEND="AGG" uv run --locked coverage run --source=./src/device_inductance -m pytest ./test
+        MPLBACKEND="AGG" uv run --locked pytest ./test
         uv run --locked coverage report
