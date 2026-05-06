@@ -32,4 +32,4 @@ jobs:
         uv venv --python ${{ matrix.python-version }}
         uv pip install .
         uv pip install twine==6.1.0
-        uv build && twine upload -u "__token__" -p ${{ secrets.PYPI_TOKEN }} ./dist/*
+        uv build && uv run --no-sync twine upload -u "__token__" -p ${{ secrets.PYPI_TOKEN }} ./dist/*
