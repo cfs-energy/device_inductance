@@ -1,6 +1,6 @@
 [project]
 name = "device_inductance"
-version = "3.2.3"
+version = "3.3.0"
 description = "Tokamak core inductance matrices and flux tables"
 authors = [{ name = "Commonwealth Fusion Systems", email = "jlogan@cfs.energy" }]
 requires-python = ">=3.10, <3.14"
@@ -26,7 +26,7 @@ dependencies = [
     "scipy~=1.12",
     "rich>=14.0.0,<15",
     "interpn[pydantic]>=0.8,<0.12",
-    "cfsem>=5,<9",
+    "cfsem>=5,<14",
     "pytest~=9.0.2",
 ]
 
