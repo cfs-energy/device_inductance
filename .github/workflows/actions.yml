@@ -56,6 +56,7 @@ jobs:
         sudo apt update
         sudo apt install -y gmsh
         uv venv --python 3.11
-        uv pip install . --group dev 'numpy==1.23.5'
+        # Tests use repository example data and measure coverage under src/.
+        uv pip install -e . --group dev 'numpy==1.23.5'
         # Keep the minimum-version environment instead of syncing to the lockfile.
         MPLBACKEND="AGG" uv run --no-sync pytest ./test
