@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "numpy>=2,<3",
+    "numpy>=1.23.5,<3",
     "omas>=0.94.0",
     "gmsh>=4.13.1,<5",
     "shapely>=2.1.0,<3",

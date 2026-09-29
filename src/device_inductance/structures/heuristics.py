@@ -33,9 +33,9 @@ def winding_number(path: NDArray, centroid: NDArray) -> tuple[NDArray, NDArray, 
         # Extract angle subtended by the two points about each axis
         cross_1_2 = np.cross(first_point, second_point)
         dot_1_2 = np.dot(first_point, second_point)
-        x_winding[i + 1] = x_winding[i] + np.atan2(cross_1_2[0], dot_1_2)
-        y_winding[i + 1] = y_winding[i] + np.atan2(cross_1_2[1], dot_1_2)
-        z_winding[i + 1] = z_winding[i] + np.atan2(cross_1_2[2], dot_1_2)
+        x_winding[i + 1] = x_winding[i] + np.arctan2(cross_1_2[0], dot_1_2)
+        y_winding[i + 1] = y_winding[i] + np.arctan2(cross_1_2[1], dot_1_2)
+        z_winding[i + 1] = z_winding[i] + np.arctan2(cross_1_2[2], dot_1_2)
 
     return x_winding, y_winding, z_winding  # [rad]
 

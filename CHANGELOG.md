@@ -4,7 +4,7 @@
 
 ### Changed
 
-* Widen cfsem dep range
+* Widen cfsem and numpy dep ranges
 
 ## 3.2.3 - 2026-05-05
 

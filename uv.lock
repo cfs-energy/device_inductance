@@ -516,7 +516,7 @@ requires-dist = [
     { name = "cfsem", specifier = ">=5,<14" },
     { name = "gmsh", specifier = ">=4.13.1,<5" },
     { name = "interpn", extras = ["pydantic"], specifier = ">=0.8,<0.12" },
-    { name = "numpy", specifier = ">=2,<3" },
+    { name = "numpy", specifier = ">=1.23.5,<3" },
     { name = "omas", specifier = ">=0.94.0" },
     { name = "pytest", specifier = "~=9.0.2" },
     { name = "rich", specifier = ">=14.0.0,<15" },
