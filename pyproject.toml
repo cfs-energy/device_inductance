@@ -1,9 +1,9 @@
 [project]
 name = "device_inductance"
-version = "3.3.0"
+version = "3.3.1"
 description = "Tokamak core inductance matrices and flux tables"
 authors = [{ name = "Commonwealth Fusion Systems", email = "jlogan@cfs.energy" }]
-requires-python = ">=3.10, <3.14"
+requires-python = ">=3.10, <3.15"
 readme = "./README.md"
 license = "MIT OR Apache-2.0"
 license-files = ["LICEN[CS]E*"]
@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Physics",
 ]
@@ -26,7 +27,7 @@ dependencies = [
     "scipy~=1.12",
     "rich>=14.0.0,<15",
     "interpn[pydantic]>=0.8,<0.12",
-    "cfsem>=5,<14",
+    "cfsem>=14.0.1,<15",
     "pytest~=9.0.2",
 ]
 
@@ -69,3 +70,7 @@ select = [
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=95"
+
+[tool.uv.sources]
+# Exact local compatibility artifact; publication is a separate release step.
+cfsem = { path = "/Users/ekingston/cfs-repos/notebook-validation-evidence/cfsem14/dependencies/cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl" }
