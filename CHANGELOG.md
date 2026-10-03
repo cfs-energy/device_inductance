@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.3.1 — unreleased
+
+* Support Python 3.14 and require the CFSEM 14 pose API.
+* Map circular force sources to separate Cartesian centers and normals, preserving signed currents and target lengths.
+* Local compatibility qualification precedes publication.
+
 ## 3.3.0 - 2026-09-29
 
 ### Changed

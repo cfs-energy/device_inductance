@@ -63,12 +63,15 @@ def _calc_coil_coil_forces(
                 ra, za, na = coila.rs, coila.zs, coila.ns
                 rb, zb, nb = coilb.rs, coilb.zs, coilb.ns
                 zero = np.zeros_like(rb)
+                source_zero = np.zeros_like(ra)
                 # Replacing J with I*dL gives body force instead of body force density
                 # and we can use the full circular length to scale the I*dL product in the toroidal direction
                 fab_jxb_r, fab_jxb_y, fab_jxb_z = body_force_density_circular_filament_cartesian(
-                    na,
-                    ra,
-                    za,
+                    ifil=na,
+                    rfil=ra,
+                    loc=(source_zero, source_zero, za),
+                    normal=(source_zero, source_zero, np.ones_like(ra)),
+                    wire_radius=None,
                     obs=(rb, zero, zb),
                     j=(zero, 2.0 * np.pi * rb * nb, zero),
                 )  # [N/A^2]
@@ -126,13 +129,16 @@ def _calc_structure_coil_forces(
             n = coils[j].ns  # [dimensionless]
             length_factor = 2.0 * np.pi * r * n
             zero = np.zeros_like(r)
+            source_zero = np.zeros_like(rfil)
 
             # Replacing J with I*dL gives body force instead of body force density
             # and we can use the full circular length to scale the I*dL product in the toroidal direction
             frij, _, fzij = body_force_density_circular_filament_cartesian(
-                ifil,
-                rfil,
-                zfil,
+                ifil=ifil,
+                rfil=rfil,
+                loc=(source_zero, source_zero, zfil),
+                normal=(source_zero, source_zero, np.ones_like(rfil)),
+                wire_radius=None,
                 obs=(r, zero, z),
                 j=(zero, length_factor, zero),
                 par=False,
