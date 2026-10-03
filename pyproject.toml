@@ -72,5 +72,5 @@ select = [
 addopts = "--cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=95"
 
 [tool.uv.sources]
-# Exact local compatibility artifact; publication is a separate release step.
-cfsem = { path = "/Users/ekingston/cfs-repos/notebook-validation-evidence/cfsem14/dependencies/cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl" }
+# Pin the Python 3.14-compatible source until CFSEM 14.0.1 is available on PyPI.
+cfsem = { git = "https://github.com/cfs-energy/cfsem-py.git", rev = "4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" }

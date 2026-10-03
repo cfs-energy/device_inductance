@@ -57,7 +57,7 @@ wheels = [
 [[package]]
 name = "cfsem"
 version = "14.0.1"
-source = { path = "/Users/ekingston/cfs-repos/notebook-validation-evidence/cfsem14/dependencies/cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl" }
+source = { git = "https://github.com/cfs-energy/cfsem-py.git?rev=4ee57b089036a7ab22f9eb5bc00d30c1750c8f71#4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" }
 dependencies = [
     { name = "findiff" },
     { name = "interpn", extra = ["pydantic"] },
@@ -66,18 +66,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-wheels = [
-    { filename = "cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:0a7e0a22c9ca19150cde57f66da3c76c3da45d2e7ec46fce74e0b56de5e177c2" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "findiff", specifier = "~=0.13.1" },
-    { name = "interpn", extras = ["pydantic"], specifier = ">=0.8.2,<0.12" },
-    { name = "numpy", specifier = ">=1.23.5" },
-    { name = "pydantic", specifier = "~=2.0" },
-    { name = "scipy", specifier = "~=1.8" },
 ]
 
 [[package]]
@@ -618,7 +606,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cfsem", path = "/Users/ekingston/cfs-repos/notebook-validation-evidence/cfsem14/dependencies/cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl" },
+    { name = "cfsem", git = "https://github.com/cfs-energy/cfsem-py.git?rev=4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" },
     { name = "gmsh", specifier = ">=4.13.1,<5" },
     { name = "interpn", extras = ["pydantic"], specifier = ">=0.8,<0.12" },
     { name = "numpy", specifier = ">=1.23.5,<3" },
