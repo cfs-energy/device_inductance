@@ -57,7 +57,7 @@ wheels = [
 [[package]]
 name = "cfsem"
 version = "14.0.1"
-source = { git = "https://github.com/cfs-energy/cfsem-py.git?rev=4ee57b089036a7ab22f9eb5bc00d30c1750c8f71#4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "findiff" },
     { name = "interpn", extra = ["pydantic"] },
@@ -66,6 +66,23 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/03/b4546ede779cc7d829a37249c83a7ecdb7798bffc386460b3c079993f0cf/cfsem-14.0.1.tar.gz", hash = "sha256:d508552acddea2f9ccf042cb78875617f6678cc0c447abab7acf1629e7a44a8b", size = 660593, upload-time = "2026-10-05T13:14:38.939Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/c4/d3f9fdfa34fab8c13e2bb7d492411790bcd7caceea8b0e61843cad311e24/cfsem-14.0.1-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:e5dd7c3c50b02d70a6c4e60bd15d56f972cda1c0d03a6bfd9ed4fd0ef9aff8cd", size = 1507820, upload-time = "2026-10-05T13:14:32.605Z" },
+    { url = "https://files.pythonhosted.org/packages/87/66/34adfc2d4834c53f658b1f0900d6bb5ead33050353a24a49f99949e0ddfc/cfsem-14.0.1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:9979e2734c399b446833094e0ef0a962da97ce036c815e6bbec303604dbf8737", size = 1414590, upload-time = "2026-10-05T13:14:31.07Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/68/ddb199c591fb883ce180df051d7d9181da727ff40389859b506407567c93/cfsem-14.0.1-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:909a7824d755073309b3482cc797f5cd380c0b4a9342a706e840ba579ca557d4", size = 1546637, upload-time = "2026-10-05T13:14:22.881Z" },
+    { url = "https://files.pythonhosted.org/packages/36/04/3eafc2fd366bd8360d9acc2507205e363b926df5264ea2876d8431b04e1e/cfsem-14.0.1-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:6e769f396c43290cbccdf75322effd949fefc63aa2d3d16b3908fa5c7ac0de1e", size = 1319944, upload-time = "2026-10-05T13:14:24.905Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/35/7ac2192584604bda6c44fca5802732ccdb26145f7441454b485ac08045a8/cfsem-14.0.1-cp310-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4bd605bf483209b3a1a6c72461daa8f55a741a3916f276df267645d281f2353c", size = 1644718, upload-time = "2026-10-05T13:14:28.731Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/28/6f09e7a9f82fe54538c0158046531e00f8617a37763256f9f8e18227d0e0/cfsem-14.0.1-cp310-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:8a9135dd905972e7ac799bef57d5818ce715dae24e237ef6d11cbee0d20fa435", size = 1415393, upload-time = "2026-10-05T13:14:26.174Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/19/f1003fc56d1b05593efe70a82ba32aec25624c41715821d6746ec7c19eb6/cfsem-14.0.1-cp310-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:cee97873881cea9550e560824d545e7f5ff8a9d9ec13a048d88359e5e22d0f10", size = 1434298, upload-time = "2026-10-05T13:14:27.416Z" },
+    { url = "https://files.pythonhosted.org/packages/81/75/ca633522af9c881c64e94cb90ea686e949e7681a45deffbc1ebf7ba5c13e/cfsem-14.0.1-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f0431e15836658e101c9ab8030bc3f0cc1b9fe7d173fdac2d3be9ecda7927b8d", size = 1850646, upload-time = "2026-10-05T13:14:29.95Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/27/b293f41d9ca2891034b21962fbeab628e0265dfe9d59c237214feb2a6471/cfsem-14.0.1-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:35f71bb781fc75bd618825d4c0c9f24ebb65e2218ce29ddaeea168c6e4d66fcd", size = 1723872, upload-time = "2026-10-05T13:14:33.825Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/d1/b57378d9eedef9c1a64bbf1a7a0484dd0d993d444cbda8272f0b49d6e667/cfsem-14.0.1-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:979fe076c8bf11d594af3cb1458ad1e973214d8c5a587328b6a15188670d2c57", size = 1591973, upload-time = "2026-10-05T13:14:34.96Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/fd/ed5a0d15adc1240eb290dfd24b119d501482b7f3b688de72e277f25ec149/cfsem-14.0.1-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:74c7ddc2b628e02d4a264ac9179d4d7bbcdb23c79687bfa701fcd14ed7dd1c15", size = 1817342, upload-time = "2026-10-05T13:14:36.185Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/1d/1aaec3b8ca3cf018ee5a59f373e33198019d4599f29877b8c11b96b46233/cfsem-14.0.1-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:306dc78a61f5e06f7aeced3c143b875903d073ba65927c56a8841143beed032b", size = 2066340, upload-time = "2026-10-05T13:14:37.576Z" },
+    { url = "https://files.pythonhosted.org/packages/20/01/ad3bf1ce75ce1dc5dcd3b9402524c0c3632557793a5880d3feca23e2e752/cfsem-14.0.1-cp310-abi3-win32.whl", hash = "sha256:3e185d3dafd3ed37d28141bd03ce8aed2374163027d078e0e279b872ccfe7334", size = 1316474, upload-time = "2026-10-05T13:14:41.384Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/35/4fc50f28406bd924eedebb63869082cbf0488ebc549f4a9a0865577b0b8c/cfsem-14.0.1-cp310-abi3-win_amd64.whl", hash = "sha256:2b63da52a7b4b3cf4909cf17e64fdfaf8ab9bb2f56f1709f54a6638bbc2fc973", size = 1667424, upload-time = "2026-10-05T13:14:40.022Z" },
 ]
 
 [[package]]
@@ -606,7 +623,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cfsem", git = "https://github.com/cfs-energy/cfsem-py.git?rev=4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" },
+    { name = "cfsem", specifier = ">=14.0.1,<15" },
     { name = "gmsh", specifier = ">=4.13.1,<5" },
     { name = "interpn", extras = ["pydantic"], specifier = ">=0.8,<0.12" },
     { name = "numpy", specifier = ">=1.23.5,<3" },

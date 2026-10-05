@@ -1,10 +1,10 @@
 # Changelog
 
-## 3.3.1 — unreleased
+## 3.3.1 — 2026-10-05
 
 * Support Python 3.14 and require the CFSEM 14 pose API.
 * Map circular force sources to separate Cartesian centers and normals, preserving signed currents and target lengths.
-* Pin the CFSEM 14.0.1 compatibility source for portable uv installs until its PyPI release is available. These installs require a Rust toolchain, now configured in CI and documentation builds.
+* Install the published CFSEM 14.0.1 wheels from the package registry; remove the temporary Git source and its Rust build-tool setup.
 
 ## 3.3.0 - 2026-09-29
 

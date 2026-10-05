@@ -70,7 +70,3 @@ select = [
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=95"
-
-[tool.uv.sources]
-# Pin the Python 3.14-compatible source until CFSEM 14.0.1 is available on PyPI.
-cfsem = { git = "https://github.com/cfs-energy/cfsem-py.git", rev = "4ee57b089036a7ab22f9eb5bc00d30c1750c8f71" }
