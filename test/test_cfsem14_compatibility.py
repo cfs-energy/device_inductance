@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def test_cfsem14_force_pose_mapping(monkeypatch):
+def test_cfsem14_force_centers_and_orientations(monkeypatch):
     """Check source centers and orientations for unequal source and target sizes.
 
     Signed, fractional turn counts exercise current weighting in both force
