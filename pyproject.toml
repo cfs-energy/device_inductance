@@ -27,7 +27,7 @@ dependencies = [
     "scipy~=1.12",
     "rich>=14.0.0,<15",
     "interpn[pydantic]>=0.8,<0.12",
-    "cfsem>=5",
+    "cfsem>=5,<15",
     "pytest~=9.0.2",
 ]
 

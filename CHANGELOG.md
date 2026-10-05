@@ -5,12 +5,8 @@
 ### Changed
 
 * Make passive-structure mutual inductances nonnegative and symmetric before model reduction.
-* Support Python 3.14 and remove the CFSEM upper bound. Calculate circular-loop forces
-  through the cylindrical magnetic-field API, retaining compatibility with older CFSEM releases.
-
-### Migration
-
-* Regenerate saved structure modes and their reduced matrices and field tables together.
+* Support Python 3.14 and allow CFSEM <15. 
+* Calculate circular-loop forces through the cylindrical magnetic-field API, retaining compatibility with older CFSEM releases.
 
 ## 3.3.0 - 2026-09-29
 
