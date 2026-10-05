@@ -123,6 +123,12 @@ to controls. To avoid taking the (very ill-conditioned) inverse of M, we can ins
 system for `1/dI/dt = (-R^-1 @ M) @ v` and take the largest-magnitude eigenvalues with significantly
 reduced numerical error.
 
+We solve the equivalent generalized symmetric problem `-M @ v = d * R @ v`.
+For reciprocal inductances and positive resistances, this preserves real current
+modes even when repeated timescales make a general eigensolve sensitive to rounding.
+The eigenvectors are orthogonal in the resistance-weighted inner product; we
+normalize each column to unit Euclidean length for the current transformation.
+
 This is not the _only_ reasonable choice for formulating the transformation matrix.
 In particular, some other methods offer particular advantages in exchange for complexity:
     * Iterative SVD can be faster than proper eigenvalue decomposition
@@ -132,44 +138,55 @@ In particular, some other methods offer particular advantages in exchange for co
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.linalg import eigh
 
 
 def eigenmode_reduction(m: NDArray, r: NDArray, max_neig: int | None) -> tuple[NDArray, NDArray, int]:
     """
-    Do eigenmode decomposition of inductive-resistive system and truncate
-    to top `max_neig` terms.
+    Find real current modes and retain the longest inductive-resistive timescales.
 
-    See module-level docs for more detail about the model reduction approach.
+    Solve the symmetric generalized eigenproblem for reciprocal inductances and
+    positive resistances. Independently summed mutual terms may differ by
+    roundoff; average them when their relative Frobenius-norm discrepancy is at
+    most 1e-12. Larger reciprocity errors are rejected.
 
     Args:
-        m: [H]   QxQ symmetric mutual inductance matrix for conducting structure
-        r: [ohm] QxQ diagonal resistance matrix for conducting structure
+        m: [H] QxQ real symmetric mutual inductance matrix for conducting structure.
+        r: [ohm] QxQ diagonal matrix of strictly positive structure resistances.
         max_neig: Optional maximum number of eigenvalues to keep. None -> keep all.
 
     Returns:
-        (d, tuv, neig), Eigenvalues in [s], QxK transformation matrix with K <= Q, and number of terms
+        (d, tuv, neig): Eigenvalues [s] sorted by decreasing magnitude, a real
+        QxK current transformation with unit-length columns, and the retained
+        count K <= Q. Each column satisfies -m @ tuv[:, i] = d[i] * r @ tuv[:, i]
+        to numerical precision. Eigenvalues are negative for a positive-definite
+        inductance matrix; their magnitudes are the decay timescales.
+
+    Raises:
+        ValueError: Inductances are not symmetric within roundoff tolerance,
+            inputs contain nonfinite values, or matrix shapes are invalid.
+        numpy.linalg.LinAlgError: Resistances are not positive definite or the
+            eigensolver fails to converge.
     """
-    rvec = np.diag(r)
-    r_inv = np.diag(1.0 / rvec)  # [ohm^-1]
+    # Allow accumulated roundoff from summing mutuals in opposite directions.
+    symmetry_rtol = 1e-12
+    if np.linalg.norm(m - m.T) > symmetry_rtol * np.linalg.norm(m):
+        raise ValueError("Mutual inductance matrix must be symmetric")
+    m_symmetric = 0.5 * (m + m.T)
 
-    # Build system describing 1/d(current)/d(time) timescales
-    # under zero applied voltage (balanced inductive-resistive decay)
-    # with unit current.
-    a = -r_inv @ m  # [s] Coupled inductive-resistive system timescales
+    # Unlike a general eigensolve of -inv(R) @ M, the symmetric problem keeps
+    # degenerate modes real and independent without discarding imaginary parts.
+    d, v = eigh(-m_symmetric, r)
+    # eigh normalizes with respect to R; the current basis uses unit length.
+    v /= np.linalg.norm(v, axis=0)
 
-    # Do eigendecomposition using method for asymmetric matrices.
-    # Per tradition, we have eigenvalues `d` and eigenvectors `v`.
-    d, v = np.linalg.eig(a)  # ([s], [dimensionless])
-
-    # Sort eigenvalues by magnitude and keep the permutation,
-    # then reorder to lead with largest terms
-    inds = np.flip(np.argsort(d**2))  # Sort for largest magnitude eigenvalues first
+    inds = np.argsort(np.abs(d))[::-1]
     tuv = v[:, inds]
     d = d[inds]
 
     # Truncate to take just the highest-magnitude terms
     if max_neig is not None:
-        tuv = v[:, :max_neig]
+        tuv = tuv[:, :max_neig]
         d = d[:max_neig]
 
     # The actual number of terms retained, which may be less

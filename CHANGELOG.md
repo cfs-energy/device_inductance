@@ -4,6 +4,8 @@
 
 * Update to CFSEM 14 and adapt force calculations to its new API for specifying turn centers and orientations.
 * Add support for Python 3.14.
+* Use a symmetric generalized eigensolve for structure model reduction to keep degenerate modes real, and retain matching eigenvalues and eigenvectors when truncating modes.
+  Recompute saved reduced-model matrices and field tables together; the mode ordering and basis can change.
 
 ## 3.3.0 - 2026-09-29
 
