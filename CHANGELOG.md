@@ -2,10 +2,17 @@
 
 ## 3.3.1 — 2026-10-05
 
+### Changed
+
 * Update to CFSEM 14 and adapt force calculations to its new API for specifying turn centers and orientations.
 * Add support for Python 3.14.
-* Stabilize structure model reduction with a symmetric generalized eigensolve, preventing roundoff near repeated decay times from creating complex modes that break flux-table assembly. Keep eigenvalues paired with their eigenvectors when truncating to the longest-lived modes.
-  Migration: Regenerate saved reduced-model matrices and field tables together because the mode ordering and basis can change.
+
+### Fixed
+
+* Fix pre-existing roundoff sensitivity in structure model reduction with a symmetric generalized eigensolve. Nearly repeated decay times could produce complex modes and break flux-table assembly.
+* Fix pre-existing mode truncation that paired sorted eigenvalues with unsorted eigenvectors, potentially retaining the wrong modes.
+
+Migration: Regenerate saved reduced-model matrices and field tables together because the mode ordering and basis can change.
 
 ## 3.3.0 - 2026-09-29
 
