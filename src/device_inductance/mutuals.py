@@ -58,6 +58,9 @@ def _calc_structure_mutual_inductances(
         for j in range(n):
             mss[i, j] = structures[i].mutual_inductance(structures[j])
 
+    # Passive loops share the +phi orientation, so mutuals are nonnegative and reciprocal.
+    mss = np.abs(mss)
+    mss = 0.5 * (mss + mss.T)
     return np.ascontiguousarray(mss)  # [H]
 
 

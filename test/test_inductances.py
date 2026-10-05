@@ -22,6 +22,31 @@ from . import typical_outputs  # Required fixture
 __all__ = ["typical_outputs"]
 
 
+def test_structure_mutuals_roundoff(monkeypatch):
+    """Reciprocity and positive coupling preserve real modes at a repeated decay time."""
+    from device_inductance.model_reduction import eigenmode_reduction
+    from device_inductance.mutuals import _calc_structure_mutual_inductances
+    from device_inductance.structures import PassiveStructureLoop
+
+    loops = [PassiveStructureLoop(str(i), shapely.box(1, 0, 2, 1), []) for i in range(2)]
+    # Two nominally uncoupled loops both decay on a 2 s timescale.
+    raw = np.array([[2.0, 1e-16], [-2e-16, 8.0]])  # [H]
+    monkeypatch.setattr(
+        PassiveStructureLoop, "mutual_inductance",
+        lambda self, other: raw[int(self.parent_name), int(other.parent_name)],
+    )
+    m = _calc_structure_mutual_inductances(loops, show_prog=False)
+    np.testing.assert_array_equal(m, m.T)
+    assert np.all(m >= 0.0)
+    np.testing.assert_array_equal(np.diag(m), [2.0, 8.0])
+
+    d, tuv, neig = eigenmode_reduction(m, np.diag([1.0, 4.0]), None)
+    assert neig == 2
+    assert np.isrealobj(d) and np.isrealobj(tuv)
+    assert np.linalg.matrix_rank(tuv) == 2
+    np.testing.assert_allclose(d, [-2.0, -2.0], rtol=1e-13)
+
+
 def test_circuit_inductances(typical_outputs: device_inductance.TypicalOutputs):
     device = typical_outputs.device
 
