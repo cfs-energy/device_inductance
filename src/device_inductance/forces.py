@@ -1,10 +1,7 @@
 """Calculation of forces between current-carrying conductors"""
 
 import numpy as np
-from cfsem import (
-    body_force_density_circular_filament_cartesian,
-    flux_density_circular_filament,
-)
+from cfsem import flux_density_circular_filament
 from interpn import MulticubicRectilinear
 from numpy.typing import NDArray
 
@@ -62,20 +59,11 @@ def _calc_coil_coil_forces(
 
                 ra, za, na = coila.rs, coila.zs, coila.ns
                 rb, zb, nb = coilb.rs, coilb.zs, coilb.ns
-                zero = np.zeros_like(rb)
-                # Replacing J with I*dL gives body force instead of body force density
-                # and we can use the full circular length to scale the I*dL product in the toroidal direction
-                fab_jxb_r, fab_jxb_y, fab_jxb_z = body_force_density_circular_filament_cartesian(
-                    na,
-                    ra,
-                    za,
-                    obs=(rb, zero, zb),
-                    j=(zero, 2.0 * np.pi * rb * nb, zero),
-                )  # [N/A^2]
-                assert sum(fab_jxb_y) == 0.0  # Sanity check
-                # Sum contributions at each filament
-                fr[i][j] = sum(fab_jxb_r)
-                fz[i][j] = sum(fab_jxb_z)
+                br, bz = flux_density_circular_filament(na, ra, za, rb, zb)  # [T/A]
+                # Integral of I*dL x B around each target filament, per terminal ampere squared.
+                length_factor = 2.0 * np.pi * rb * nb  # [m]-turns
+                fr[i][j] = np.sum(length_factor * bz)  # [N/A^2]
+                fz[i][j] = np.sum(-length_factor * br)
 
     return (fr, fz)
 
@@ -125,20 +113,11 @@ def _calc_structure_coil_forces(
             z = coils[j].zs  # [m]
             n = coils[j].ns  # [dimensionless]
             length_factor = 2.0 * np.pi * r * n
-            zero = np.zeros_like(r)
 
-            # Replacing J with I*dL gives body force instead of body force density
-            # and we can use the full circular length to scale the I*dL product in the toroidal direction
-            frij, _, fzij = body_force_density_circular_filament_cartesian(
-                ifil,
-                rfil,
-                zfil,
-                obs=(r, zero, z),
-                j=(zero, length_factor, zero),
-                par=False,
-            )
-            fr[i, j] = sum(frij)
-            fz[i, j] = sum(fzij)
+            # Integral of I*dL x B around each target filament, per terminal ampere squared.
+            br, bz = flux_density_circular_filament(ifil, rfil, zfil, r, z, par=False)  # [T/A]
+            fr[i, j] = np.sum(length_factor * bz)  # [N/A^2]
+            fz[i, j] = np.sum(-length_factor * br)
 
     return (fr, fz)
 
