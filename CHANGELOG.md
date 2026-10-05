@@ -2,7 +2,7 @@
 
 ## 3.3.1 — 2026-10-05
 
-* Update to CFSEM 14 (`>=14.0.1,<15`) and adapt force calculations to its updated interface.
+* Update to CFSEM 14 and adapt force calculations to its new API for specifying turn centers and orientations.
 * Add support for Python 3.14.
 
 ## 3.3.0 - 2026-09-29

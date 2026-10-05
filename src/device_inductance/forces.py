@@ -21,6 +21,29 @@ def _calc_coil_coil_forces(
     coil_flux_density_tables: tuple[NDArray, NDArray],
     show_prog: bool = True,
 ) -> tuple[NDArray, NDArray]:
+    """Calculate radial and axial force coefficients between coils.
+
+    Mutual forces use ideal circular filaments centered at (0, 0, z), with
+    radii given by the source coil and normals along +z. Signed, fractional
+    turn counts set the filament currents per terminal ampere. Source centers
+    and normals follow the source filament count, which can differ from the
+    number of target filaments where the force is evaluated.
+
+    Self-force uses the smooth local-field table when available; otherwise the
+    diagonal entry stays zero and a warning is logged. Axial self-force is zero.
+
+    Args:
+        coils: Source and target coils, in force-matrix order.
+        grids: Radial and axial grid coordinates [m] for the field tables.
+        coil_flux_density_tables: Radial and axial fields [T/A], each with shape
+            (ncoils, nr, nz). The axial table supplies the radial self-force.
+        show_prog: Whether to display progress.
+
+    Returns:
+        Radial and axial arrays [N/A^2], each with shape (ncoils, ncoils).
+        Entry [i, j] gives force on coil j from coil i per product of their
+        terminal currents; multiplying by I_i * I_j gives the force in newtons.
+    """
     ncoils = len(coils)
     fr = np.zeros((ncoils, ncoils))  # [N/A^2]
     fz = np.zeros((ncoils, ncoils))
@@ -113,6 +136,24 @@ def _calc_structure_coil_forces(
     structures: list[PassiveStructureLoop],
     show_prog: bool = True,
 ) -> tuple[NDArray, NDArray]:
+    """Calculate radial and axial force coefficients on coils from structures.
+
+    Each structure supplies ideal circular source filaments centered at
+    (0, 0, z), with normals along +z. Its fractional turn weights distribute a
+    unit loop current among those filaments. Force is evaluated at the target
+    coil filaments and weighted by their signed turn counts and circumferences,
+    so the source and target can have different filament counts.
+
+    Args:
+        coils: Target coils, in force-matrix column order.
+        structures: Source structure loops, in force-matrix row order.
+        show_prog: Whether to display progress.
+
+    Returns:
+        Radial and axial arrays [N/A^2], each with shape (nstruct, ncoils).
+        Entry [i, j] gives force on coil j from structure i per product of the
+        structure-loop current and coil terminal current.
+    """
     ncoils = len(coils)
     nstruct = len(structures)
 

@@ -2,7 +2,12 @@ import numpy as np
 
 
 def test_cfsem14_force_pose_mapping(monkeypatch):
-    """Separate source poses from observation/current arrays of unequal length."""
+    """Check source centers and orientations for unequal source and target sizes.
+
+    Signed, fractional turn counts exercise current weighting in both force
+    paths. Compare the resulting forces with the axisymmetric field calculation
+    to check that the explicit source geometry preserves the same result.
+    """
     from types import SimpleNamespace
 
     from cfsem import flux_density_circular_filament
